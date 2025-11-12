@@ -76,256 +76,256 @@ msgid "x2"
 msgstr ""
 
 msgid "不使用"
-msgstr ""
+msgstr "不使用"
 
 msgid "主画面侦测"
-msgstr ""
+msgstr "主画面侦测"
 
 msgid "使用外部移动逻辑自动打本"
-msgstr ""
+msgstr "使用外部移动逻辑自动打本"
 
 msgid "使用技能"
-msgstr ""
+msgstr "使用技能"
 
 msgid "使用键盘"
-msgstr ""
+msgstr "使用键盘"
 
 msgid "全自动"
-msgstr ""
+msgstr "全自动"
 
 msgid "刷几次"
-msgstr ""
+msgstr "刷几次"
 
 msgid "刷武器密函时不建议使用"
-msgstr ""
+msgstr "刷武器密函时不建议使用"
 
 msgid "副本类型"
-msgstr ""
+msgstr "副本类型"
 
 msgid "半自动"
-msgstr ""
+msgstr "半自动"
 
 msgid "单次提示响几次"
-msgstr ""
+msgstr "单次提示响几次"
 
 msgid "发出声音提醒"
-msgstr ""
+msgstr "发出声音提醒"
 
 msgid "右键按住多久(秒)"
-msgstr ""
+msgstr "右键按住多久(秒)"
 
 msgid "右键释放后等待多久(秒)"
-msgstr ""
+msgstr "右键释放后等待多久(秒)"
 
 msgid "启动任务时和特定场景下会将鼠标移动到安全位置"
-msgstr ""
+msgstr "启动任务时和特定场景下会将鼠标移动到安全位置"
 
 msgid "启用自动穿引共鸣"
-msgstr ""
+msgstr "启用自动穿引共鸣"
 
 msgid "在需要时发出声音提醒"
-msgstr ""
+msgstr "在需要时发出声音提醒"
 
 msgid "在需要跑图时时启用触发任务的自动穿引共鸣"
-msgstr ""
+msgstr "在需要跑图时启用触发任务的自动穿引共鸣"
 
 msgid "外部文件夹"
-msgstr ""
+msgstr "外部文件夹"
 
 msgid "如果不在可操控角色的画面则结束任务"
-msgstr ""
+msgstr "如果不在可操控角色的画面则结束任务"
 
 msgid "如果是无尽关卡，选择打几个轮次"
-msgstr ""
+msgstr "如果是无尽关卡，选择打几个轮次"
 
 msgid "委托手册"
-msgstr ""
+msgstr "委托手册"
 
 msgid "左键按住多久"
-msgstr ""
+msgstr "左键按住多久"
 
 msgid "左键释放后等待多久"
-msgstr ""
+msgstr "左键释放后等待多久"
 
 msgid "开始阶段超时(秒)"
-msgstr ""
+msgstr "开始阶段超时(秒)"
 
 msgid "弹出通知"
-msgstr ""
+msgstr "弹出通知"
 
 msgid "总共刷多少次副本"
-msgstr ""
+msgstr "总共刷多少次副本"
 
 msgid "战技"
-msgstr ""
+msgstr "战技"
 
 msgid "打几个轮次"
-msgstr ""
+msgstr "打几个轮次"
 
 msgid "扼守无尽"
-msgstr ""
+msgstr "扼守无尽"
 
 msgid "技能"
-msgstr ""
+msgstr "技能"
 
 msgid "技能释放频率"
-msgstr ""
+msgstr "技能释放频率"
 
 msgid "挂机相关设置"
-msgstr ""
+msgstr "挂机相关设置"
 
 msgid "挂机设置"
-msgstr ""
+msgstr "挂机设置"
 
 msgid "按下时间"
-msgstr ""
+msgstr "按下时间"
 
 msgid "按住普攻"
-msgstr ""
+msgstr "按住普攻"
 
 msgid "探险无尽"
-msgstr ""
+msgstr "探险无尽"
 
 msgid "提示音"
-msgstr ""
+msgstr "提示音"
 
 msgid "无悠闲全自动钓鱼 (原作者: B站无敌大蜜瓜)，如果识别不到鱼条修改配置降低面积要求"
-msgstr ""
+msgstr "无悠闲全自动钓鱼 (原作者: B站无敌大蜜瓜)，如果识别不到鱼条修改配置降低面积要求"
 
 msgid "是否在任务中随机移动"
-msgstr ""
+msgstr "是否在任务中随机移动"
 
 msgid "是否弹出windows通知"
-msgstr ""
+msgstr "是否弹出windows通知"
 
 msgid "普攻"
-msgstr ""
+msgstr "普攻"
 
 msgid "最大轮数(0=无限制)"
-msgstr ""
+msgstr "最大轮数(0=无限制)"
 
 msgid "毎几秒释放一次技能"
-msgstr ""
+msgstr "每几秒释放一次技能"
 
 msgid "每轮结束等待时间(秒)"
-msgstr ""
+msgstr "每轮结束等待时间(秒)"
 
 msgid "波次超时后将发出提示"
-msgstr ""
+msgstr "波次超时后将发出提示"
 
 msgid "溜鱼阶段超时(秒)"
-msgstr ""
+msgstr "溜鱼阶段超时(秒)"
 
 msgid "激活键"
-msgstr ""
+msgstr "激活键"
 
 msgid "示例-无巧手30火突破素材(1080p) by望目"
-msgstr ""
+msgstr "示例-无巧手30火突破素材(1080p) by望目"
 
 msgid "终结技"
-msgstr ""
+msgstr "终结技"
 
 msgid "结束阶段超时(秒)"
-msgstr ""
+msgstr "结束阶段超时(秒)"
 
 msgid "自动30/65级魔之楔本"
-msgstr ""
+msgstr "自动30/65级魔之楔本"
 
 msgid "自动70级皎皎币本"
-msgstr ""
+msgstr "自动70级皎皎币本"
 
 msgid "自动勘察"
-msgstr ""
+msgstr "自动勘察"
 
 msgid "自动战斗"
-msgstr ""
+msgstr "自动战斗"
 
 msgid "自动扼守"
-msgstr ""
+msgstr "自动扼守"
 
 msgid "自动探险"
-msgstr ""
+msgstr "自动探险"
 
 msgid "自动点击肉鸽对话"
-msgstr ""
+msgstr "自动点击肉鸽对话"
 
 msgid "自动穿引共鸣"
-msgstr ""
+msgstr "自动穿引共鸣"
 
 msgid "自动肉鸽对话"
-msgstr ""
+msgstr "自动肉鸽对话"
 
 msgid "自动花序弓蓄力瞄准"
-msgstr ""
+msgstr "自动花序弓蓄力瞄准"
 
 msgid "自动选择首个密函和密函奖励"
-msgstr ""
+msgstr "自动选择首个密函和密函奖励"
 
 msgid "自动释放技能"
-msgstr ""
+msgstr "自动释放技能"
 
 msgid "自动钓鱼"
-msgstr ""
+msgstr "自动钓鱼"
 
 msgid "自动驱离"
-msgstr ""
+msgstr "自动驱离"
 
 msgid "超时后将发出提示"
-msgstr ""
+msgstr "超时后将发出提示"
 
 msgid "超时后将重启任务"
-msgstr ""
+msgstr "超时后将重启任务"
 
 msgid "超时时间"
-msgstr ""
+msgstr "超时时间"
 
 msgid "跳过对话"
-msgstr ""
+msgstr "跳过对话"
 
 msgid "轮次"
-msgstr ""
+msgstr "轮次"
 
 msgid "选择mod目录下的外部逻辑"
-msgstr ""
+msgstr "选择mod目录下的外部逻辑"
 
 msgid "释放间隔"
-msgstr ""
+msgstr "释放间隔"
 
 msgid "键盘"
-msgstr ""
+msgstr "键盘"
 
 msgid "间隔时间"
-msgstr ""
+msgstr "间隔时间"
 
 msgid "防止鼠标干扰"
-msgstr ""
+msgstr "防止鼠标干扰"
 
 msgid "随机游走"
-msgstr ""
+msgstr "随机游走"
 
 msgid "需主动激活"
-msgstr ""
+msgstr "需主动激活"
 
 msgid "需主动激活，运行中也可使用左键打断"
-msgstr ""
+msgstr "需主动激活，运行中也可使用左键打断"
 
 msgid "需主动激活，运行中可使用右键或左键打断"
-msgstr ""
+msgstr "需主动激活，运行中可使用右键或左键打断"
 
 msgid "鱼条最小面积(像素)"
-msgstr ""
+msgstr "鱼条最小面积(像素)"
 
 msgid "鱼标按空格区域占比(0-0.5)"
-msgstr ""
+msgstr "鱼标按空格区域占比(0-0.5)"
 
 msgid "鱼标最大面积(像素)"
-msgstr ""
+msgstr "鱼标最大面积(像素)"
 
 msgid "鱼标最小面积(像素)"
-msgstr ""
+msgstr "鱼标最小面积(像素)"
 
 msgid "默认"
-msgstr ""
+msgstr "默认"
 
 msgid "鼠标键或键盘按键"
-msgstr ""
+msgstr "鼠标键或键盘按键"
