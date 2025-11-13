@@ -206,7 +206,7 @@ class CommissionsTask(BaseDNATask):
                     raise_if_not_found=True,
                 )
         else:
-            self.log_info("需自行选择密函", True)
+            self.log_info_notify("需自行选择密函")
             self.soundBeep()
             self.wait_until(
                 lambda: not self.find_letter_btn(),
@@ -226,7 +226,7 @@ class CommissionsTask(BaseDNATask):
                 raise_if_not_found=True,
             )
         else:
-            self.log_info("需自行选择密函奖励", True)
+            self.log_info_notify("需自行选择密函奖励")
             self.soundBeep()
             self.wait_until(
                 lambda: not self.find_letter_reward_btn(),
