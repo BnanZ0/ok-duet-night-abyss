@@ -179,10 +179,12 @@ class AutoPuzzleTask(BaseDNATask, TriggerTask):
 
         # 确保游戏窗口在前台
         from ok import og
+        import win32gui
 
         if not og.device_manager.hwnd_window.is_foreground():
             logger.warning("游戏窗口不在前台，尝试激活窗口...")
-            og.device_manager.hwnd_window.set_foreground()
+            hwnd = og.device_manager.hwnd_window.hwnd
+            win32gui.SetForegroundWindow(hwnd)
             self.sleep(0.5)
 
         import win32api
