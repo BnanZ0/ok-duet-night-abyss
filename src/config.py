@@ -146,5 +146,6 @@ config = {
         ["src.tasks.AutoMoveTask", "AutoMoveTask"],
         ["src.tasks.AutoAimTask", "AutoAimTask"],
         ["src.tasks.AutoRogueDialogTask", "AutoRogueDialogTask"],
+        ["src.tasks.AutoPuzzleTask", "AutoPuzzleTask"],
     ]
 }
