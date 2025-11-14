@@ -696,8 +696,6 @@ ESCORT_PATH_A_2_RELATIVE = [
     {"type": "key_up", "delay": 0.5784, "key": "a"},
     {"type": "key_down", "delay": 1.4355, "key": "f"},
     {"type": "key_up", "delay": 0.106, "key": "f"},
-    {"type": "key_down", "delay": 0.094, "key": "f"},
-    {"type": "key_up", "delay": 0.106, "key": "f"},
     {
         "type": "mouse_rotation",
         "delay": 6.5807,
