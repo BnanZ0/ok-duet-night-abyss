@@ -210,7 +210,11 @@ class CommissionsTask(BaseDNATask):
             if self.find_letter_interface():
                 self.sleep(0.5)
                 self.move_mouse_to_safe_position()
+                self.sleep(0.1)
                 self.click(0.56, 0.5)
+                self.sleep(0.1)
+                self.click(0.56, 0.5)
+                self.sleep(0.1)
                 self.move_back_from_safe_position()
                 self.sleep(0.5)
                 self.wait_until(
