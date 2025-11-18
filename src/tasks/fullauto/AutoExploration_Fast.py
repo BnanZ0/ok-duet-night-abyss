@@ -7,6 +7,7 @@ from src.tasks.AutoExploration import AutoExploration
 from src.tasks.CommissionsTask import CommissionsTask, QuickMoveTask
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
 from src.tasks.trigger.AutoPuzzleTask import AutoPuzzleTask
+from src.tasks.trigger.AutoWheelTask import AutoWheelTask
 from src.tasks.BaseCombatTask import BaseCombatTask
 
 logger = Logger.get_logger(__name__)
@@ -115,8 +116,11 @@ class AutoExploration_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.send_key_up("a")
             self.sleep(0.6)
             self.send_key(self.get_interact_key(), down_time=0.1,after_sleep=0.8)
+            logger.info("到达高台，尝试解密")
             if not self.try_solving_puzzle():
+                logger.info("解密失败")
                 return True
+            logger.info("解密完成，继续前进")
             self.send_key_down("d")
             self.sleep(0.1)
             self.send_key(self.get_dodge_key(),  down_time=0.2)
@@ -156,22 +160,29 @@ class AutoExploration_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return super().find_track_point(threshold=0.7, box=box)
         
     def try_solving_puzzle(self):
-        puzzle_task = self.get_task_by_class(AutoPuzzleTask)
+        puzzle_task1 = self.get_task_by_class(AutoPuzzleTask)
+        puzzle_task2 = self.get_task_by_class(AutoWheelTask)
         if not self.wait_until(
             self.in_team, 
             post_action = lambda: self.send_key(self.get_interact_key(), after_sleep=0.1),
             time_out = 1.5
         ):
-            puzzle_task.run()
-            if not self.wait_until(self.in_team, time_out=1.5):           
-                if self.config.get("解密失败自动重开", True):                    
-                    self.log_info("未成功处理解密，等待重开")
-                    self.open_in_mission_menu()
-                else:
-                    self.log_info_notify("未成功处理解密，请求人工接管")
-                    self.soundBeep()
-                    self.wait_until(self.in_team, time_out = 60)
-                return False               
+            logger.info("尝试迷宫解密")
+            puzzle_task1.run()
+            if not self.wait_until(self.in_team, time_out=1.5):
+                logger.info("尝试转盘解密")
+                puzzle_task2.run()
+                if not self.wait_until(self.in_team, time_out=1.5):
+                    if self.config.get("解密失败自动重开", True):                    
+                        self.log_info("未成功处理解密，等待重开")
+                        self.open_in_mission_menu()
+                    else:
+                        self.log_info_notify("未成功处理解密，请求人工接管")
+                        self.soundBeep()
+                        self.wait_until(self.in_team, time_out = 60)
+                    return False
+        else:
+            logger.info("已经退出界面无需解密") 
         return True
         
     
