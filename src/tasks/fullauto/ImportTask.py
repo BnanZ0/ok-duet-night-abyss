@@ -19,6 +19,8 @@ from src.tasks.BaseCombatTask import BaseCombatTask
 from src.tasks.AutoDefence import AutoDefence
 from src.tasks.AutoExpulsion import AutoExpulsion
 from src.tasks.AutoExploration import AutoExploration
+from src.tasks.trigger.AutoWheelTask import AutoWheelTask
+from src.tasks.trigger.AutoPuzzleTask import AutoPuzzleTask 
 
 logger = Logger.get_logger(__name__)
 
@@ -37,11 +39,11 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.description = "全自动"
         self.group_name = "全自动"
         self.group_icon = FluentIcon.CAFE
-
         self.default_config.update({
             '轮次': 10,
             '外部文件夹': "",
-            '副本类型': "默认"
+            '副本类型': "默认",
+            '内置解密失败自动重开': False,
         })
         self.config_type['外部文件夹'] = {
             "type": "drop_down",
@@ -59,11 +61,20 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.config_description.update({
             '轮次': '如果是无尽关卡，选择打几个轮次',
-            '外部文件夹': '选择mod目录下的外部逻辑'
+            '外部文件夹': '选择mod目录下的外部逻辑',
+            '内置解密失败自动重开': '完全依靠内部解密则打开此选项,有巧手或者外置脚本自行识图解密则关闭此选项',
         })
 
         self.action_timeout = 10
         self.quick_move_task = QuickMoveTask(self)
+
+        self.sequence_timeout = 5 # 按键序列超时时间（秒）
+        self.tasks_array = []
+        task_classes = [AutoWheelTask, AutoPuzzleTask]
+        for cls in task_classes:
+            task = self.get_task_by_class(cls)
+            if task is not None:  
+                self.tasks_array.append(task)
 
     def load_direct_folder(self, path):
         folders = []
@@ -154,6 +165,30 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.current_round = 0
         self.reset_wave_info()
         self.skill_time = 0
+
+        # 跨map_index的按键状态追踪
+        self.reset_key_sequence()   
+
+    def reset_key_sequence(self):   
+        self.f_key_count = 0
+        self.esc_pressed_in_sequence = False
+        self.sequence_start_time = 0
+
+    def try_to_solve_tasks(self):
+        if len(self.tasks_array)>0 and not self.wait_until(self.in_team, time_out=1.5):      
+            for task in self.tasks_array:
+                        task.run()
+
+            if not self.wait_until(self.in_team, time_out=20):           
+                if self.config.get("内置解密失败自动重开", False):                    
+                    self.log_info("未成功处理解密，等待重开")
+                    self.open_in_mission_menu()
+                else:
+                    self.log_info_notify("未成功处理解密，忽略错误继续")
+                    # self.soundBeep()
+                    # self.wait_until(self.in_team, time_out = 60)
+                return False    
+        return True
 
     def stop_func(self):
         self.get_round_info()
@@ -258,26 +293,64 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.log_info("匹配失败")
         return max_index, count
 
+
     def play_macro_actions(self, map_index):
         actions = self.script[map_index]["actions"]
         start = time.time()
+        
         for i, action in enumerate(actions):
+            # 等待到动作执行时间
             while time.time() - start < action['time']:
                 if self.check_for_monthly_card()[0]:
+                    # 重置按键状态
+                    self.reset_key_sequence()
                     raise MacroFailedException
                 self.next_frame()
+            
+            # 检查序列是否超时
+            current_time =time.time()
+            if self.f_key_count > 0 and current_time - self.sequence_start_time > self.sequence_timeout:
+                # 超时重置状态
+                logger.debug(f"按键序列超时，重置状态,{current_time - self.sequence_start_time}>{self.sequence_timeout}")
+                self.reset_key_sequence()
+            
+            # 处理延迟动作
             if action['type'] == "delay":
                 self.delay_index = map_index
-            #            if action['type'] == "key_down" and action['key'] == "f4":
-            #                self.delay_index = None
-            #                time_reset = time.time()
-            #                self.reset_and_transport()
-            #                start += time.time() - time_reset
             else:
                 self.delay_index = None
                 self.execute_key_action(action)
+                
+                # 处理按键抬起事件
+                if action['type'] == "key_up":
+                    if action['key'] == "f":
+                        current_time = time.time()
+                        
+                        # 如果是第一个F键，开始计时
+                        if self.f_key_count == 0:
+                            logger.debug("开始F键计数序列")
+                            self.sequence_start_time = current_time
+                        
+                        # 增加F键计数
+                        self.f_key_count += 1
+                        
+                        # 检查是否满足触发条件（5秒内按了至少两次F键，且中间没有ESC）
+                        if self.f_key_count >= 2 and not self.esc_pressed_in_sequence:
+                            logger.debug(f"{self.sequence_timeout }秒内按了{self.f_key_count}次F键，触发解密任务")
+                            time_reset = time.time()
+                            self.try_to_solve_tasks()
+                            start += time.time() - time_reset
+                            
+                            # 触发后重置状态
+                            self.reset_key_sequence()
+                    
+                    elif action['key'] == "esc":
+                        # 如果在F键序列中按了ESC，标记状态
+                        if self.f_key_count > 0:
+                            logger.debug("F键序列中按下了ESC，标记状态")
+                            self.esc_pressed_in_sequence = True 
+        
         self.sleep(2)
-
     def execute_key_action(self, action):
         try:
             if action['type'] == "mouse_down":
