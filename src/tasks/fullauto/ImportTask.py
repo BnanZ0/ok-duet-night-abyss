@@ -68,7 +68,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.action_timeout = 10
         self.quick_move_task = QuickMoveTask(self)
 
-        self.sequence_timeout = 5 # 按键序列超时时间（秒）
+        self.sequence_timeout = 8 # 按键序列超时时间（秒）
         self.tasks_array = []
         task_classes = [AutoWheelTask, AutoPuzzleTask]
         for cls in task_classes:
