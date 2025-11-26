@@ -232,7 +232,7 @@ class AutoFishTask(DNAOneTimeTask, BaseDNATask):
             # cv2.destroyAllWindows()
             raise
         except Exception as e:
-            logger.error(f"find_bar_and_fish_by_area error: {e}")
+            logger.error("find_bar_and_fish_by_area error", e)
             return (False, None, None), (False, None, None)
 
     # ---- phases ----
@@ -565,5 +565,5 @@ class AutoFishTask(DNAOneTimeTask, BaseDNATask):
             except TaskDisabledException:
                 raise
             except Exception as e:
-                logger.error(f"AutoFishTask fatal: {e}")
+                logger.error("AutoFishTask fatal", e)
                 break

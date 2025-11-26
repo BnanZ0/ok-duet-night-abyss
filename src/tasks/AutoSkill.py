@@ -32,6 +32,7 @@ class AutoSkill(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             '超时时间': '超时后将发出提示',
         })
 
+        self.skill_tick = self.create_skill_ticker()
         self.action_timeout = 10
 
     def run(self):
@@ -46,11 +47,11 @@ class AutoSkill(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
     def do_run(self):
         self.load_char()
-        _skill_time = 0
+        self.init_all()
         self.wait_until(self.in_team, time_out=30)
         while True:
             if self.in_team():
-                _skill_time = self.use_skill(_skill_time)
+                self.skill_tick()
             else:
                 if self.config.get('主画面侦测', False):
                     self.log_info_notify('任务完成')
@@ -61,3 +62,6 @@ class AutoSkill(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.soundBeep()
                 return
             self.sleep(0.2)
+
+    def init_all(self):
+        self.skill_tick.reset()

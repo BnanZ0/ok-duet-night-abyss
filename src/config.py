@@ -91,13 +91,6 @@ config = {
             'use_openvino': True,
         }
     },
-    # required if using feature detection
-    'template_matching': {
-        'coco_feature_json': os.path.join('assets', 'result.json'),
-        'default_horizontal_variance': 0.002,
-        'default_vertical_variance': 0.002,
-        'default_threshold': 0.8,
-    },
     'windows': {  # required  when supporting windows game
         'exe': ['EM-Win64-Shipping.exe'],
         'hwnd_class': 'UnrealWindow', #增加重名检查准确度

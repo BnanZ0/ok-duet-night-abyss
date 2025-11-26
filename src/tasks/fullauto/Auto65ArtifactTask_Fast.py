@@ -227,7 +227,7 @@ class Auto65ArtifactTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         except TaskDisabledException:
             raise
         except Exception as e:
-            logger.error(f"移动过程出错: {e}")
+            logger.error("移动过程出错", e)
             raise
         finally:
             # 确保释放所有按键

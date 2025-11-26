@@ -136,10 +136,10 @@ class AutoMazeTask(BaseDNATask, TriggerTask):
             logger.error(f"✗ 解密路径文件不存在: {json_path}")
             return {}
         except json.JSONDecodeError as e:
-            logger.error(f"✗ 解密路径 JSON 解析失败: {e}")
+            logger.error("✗ 解密路径 JSON 解析失败", e)
             return {}
         except Exception as e:
-            logger.error(f"✗ 加载解密路径失败: {e}")
+            logger.error("✗ 加载解密路径失败", e)
             return {}
         
     

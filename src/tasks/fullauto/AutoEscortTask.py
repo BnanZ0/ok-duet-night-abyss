@@ -81,10 +81,10 @@ class AutoEscortTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             logger.error(f"✗ 护送路径文件不存在: {json_path}")
             return {}
         except json.JSONDecodeError as e:
-            logger.error(f"✗ 护送路径 JSON 解析失败: {e}")
+            logger.error("✗ 护送路径 JSON 解析失败", e)
             return {}
         except Exception as e:
-            logger.error(f"✗ 加载护送路径失败: {e}")
+            logger.error("✗ 加载护送路径失败", e)
             return {}
 
     def run(self):
@@ -369,7 +369,7 @@ class AutoEscortTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             )
 
         except Exception as e:
-            logger.error(f"❌ 检测 track_point 时出错: {e}，重新开始任务...")
+            logger.error("❌ 检测 track_point 时出错，重新开始任务...", e)
             self.give_up_mission()
             return None
 

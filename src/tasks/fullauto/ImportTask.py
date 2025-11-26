@@ -70,6 +70,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             # '使用内建解密': '使用ok内建解密功能',
         })
 
+        self.skill_tick = self.create_skill_ticker()
         self.action_timeout = 10
         self.quick_move_task = QuickMoveTask(self)
 
@@ -99,11 +100,8 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             raise
 
     def do_run(self):
-        self.init_param()
+        self.init_all()
         self.load_char()
-        _wave = -1
-        _wave_start = 0
-        _delay_task_start = 0
         if self.in_team():
             self.open_in_mission_menu()
             self.sleep(0.5)
@@ -111,15 +109,15 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             if self.in_team():
                 self.get_wave_info()
                 if self.current_wave != -1:
-                    if self.current_wave != _wave:
-                        _wave = self.current_wave
-                self.skill_time = self.use_skill(self.skill_time)
-                if time.time() - _wave_start >= self.config.get('超时时间', 180):
+                    if self.current_wave != self.runtime_state["wave"]:
+                        self.runtime_state["wave"] = self.current_wave
+                self.skill_tick()
+                if time.time() - self.runtime_state["wave_start_time"] >= self.config.get('超时时间', 180):
                     self.log_info('任务超时')
                     self.open_in_mission_menu()
                     self.sleep(0.5)
-                if self.delay_index is not None and time.time() > _delay_task_start:
-                    _delay_task_start += 1
+                if self.delay_index is not None and time.time() > self.runtime_state["delay_task_start"]:
+                    self.runtime_state["delay_task_start"] += 1
                     if self.match_map(self.delay_index):
                         self.walk_to_aim(self.delay_index)
             _status = self.handle_mission_interface(stop_func=self.stop_func)
@@ -127,30 +125,35 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 if _status == Mission.STOP:
                     self.quit_mission()
                     self.log_info('任务中止')
-                    self.init_param()
+                    self.init_all()
                     continue
-                else:
-                    self.log_info('任务完成')
                 self.wait_until(self.in_team, time_out=30)
-                self.init_param()
+                self.log_info('任务开始')
+                self.init_all()
                 self.sleep(2)
                 self.walk_to_aim()
-                _wave_start = time.time()
-                _delay_task_start = _wave_start + 1
-                self.reset_wave_info()
+                now = time.time()
+                self.runtime_state.update({"wave_start_time": now, "delay_task_start": now + 1})
             elif _status == Mission.CONTINUE:
                 self.log_info('任务继续')
                 self.wait_until(self.in_team, time_out=30)
-                self.reset_wave_info()
-                _wave_start = time.time()
+                self.init_for_next_round()
+                now = time.time()
+                self.runtime_state.update({"wave_start_time": now, "delay_task_start": now + 1})
             self.sleep(0.2)
 
-    def init_param(self):
+    def init_all(self):
+        self.init_for_next_round()
         self.delay_index = None
-        self.stop_mission = False
+        self.skill_tick.reset()
         self.current_round = 0
+
+    def init_for_next_round(self):
+        self.init_runtime_state()
+
+    def init_runtime_state(self):
+        self.runtime_state = {"wave_start_time": 0, "wave": -1, "delay_task_start": 0}
         self.reset_wave_info()
-        self.skill_time = 0
 
     def stop_func(self):
         self.get_round_info()
