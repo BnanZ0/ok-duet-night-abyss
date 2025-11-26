@@ -342,7 +342,7 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self._path_elevator_center()
 
         except Exception as e:
-            print(f"Error in walk_to_aim: {e}")
+            logger.error("Error in walk_to_aim", e)
             # 可以在这里添加日志记录
         finally:
             self._release_all_move_keys()
