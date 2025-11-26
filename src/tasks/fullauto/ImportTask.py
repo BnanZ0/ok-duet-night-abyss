@@ -373,7 +373,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def play_macro_actions(self, map_index):
         actions = self.script[map_index]["actions"]
 
-        if "original_x_sensitivity" and "original_y_sensitivity" in self.script[map_index]:
+        if "original_x_sensitivity" and "original_y_sensitivity" in self.script[map_index] :
             self.original_Xsensitivity = self.script[map_index]["original_x_sensitivity"]
             self.original_Ysensitivity = self.script[map_index]["original_y_sensitivity"]
         else:
@@ -415,7 +415,11 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         try:
             if action_type == "mouse_move":
-                self.execute_mouse_move(action['dx'], action['dy'])
+                # 判断设置中灵敏度开关是否打开
+                if self.sensitivity_config['使用玩家灵敏度'] is True:
+                    self.execute_mouse_move_after_calculation(action['dx'], action['dy'])
+                else:
+                    self.execute_mouse_move(action['dx'], action['dy'])
 
             elif action_type == "mouse_rotation":
                 self.execute_mouse_rotation(action)
@@ -510,6 +514,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return
 
         dx, dy = direction_map[direction]
+        # 判断设置中灵敏度开关是否打开
         if self.sensitivity_config['使用玩家灵敏度'] is True:
             self.execute_mouse_move_after_calculation(dx, dy)
         else:
@@ -533,9 +538,11 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         """
         self.try_bring_to_front()
 
-        dx, dy = self.calculate_sensitivity(self.original_Xsensitivity, self.original_Ysensitivity, dx, dy)
+        calculation_dx, calculation_dy = self.calculate_sensitivity(self.original_Xsensitivity, self.original_Ysensitivity, dx, dy)
+        # logger.debug(f"玩家X: {round(self.sensitivity_config['X-axis sensitivity'], 1)}, 脚本X: {self.original_Xsensitivity}, 玩家Y: {round(self.sensitivity_config['Y-axis sensitivity'], 1)}, 脚本Y:{self.original_Ysensitivity}")
+        # logger.debug(f"原鼠标x移动距离: {dx}, 现鼠标x移动距离: {calculation_dx}, 原鼠标y移动距离: {dy}, 现鼠标y移动距离: {calculation_dy},")
         # 使用缓存的实例
-        self.genshin_interaction.move_mouse_relative(int(dx), int(dy))
+        self.genshin_interaction.move_mouse_relative(int(calculation_dx), int(calculation_dy))
 
 def normalize_key(key: str) -> str:
     """
