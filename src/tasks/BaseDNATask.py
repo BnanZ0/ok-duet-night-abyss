@@ -192,7 +192,7 @@ class BaseDNATask(BaseTask):
     #     return super().sleep(timeout - self.check_for_monthly_card())
 
     def check_for_monthly_card(self):
-        if self.should_check_monthly_card():
+        if self.monthly_card_config.get('Check Monthly Card') and self.should_check_monthly_card():
             start = time.time()
             ret = self.handle_monthly_card()
             cost = time.time() - start
