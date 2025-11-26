@@ -373,7 +373,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def play_macro_actions(self, map_index):
         actions = self.script[map_index]["actions"]
 
-        if "original_x_sensitivity" in self.script[map_index]:
+        if "original_x_sensitivity" and "original_y_sensitivity" in self.script[map_index]:
             self.original_Xsensitivity = self.script[map_index]["original_x_sensitivity"]
             self.original_Ysensitivity = self.script[map_index]["original_y_sensitivity"]
         else:
