@@ -656,3 +656,18 @@ msgstr ""
 
 msgid "最大轮数"
 msgstr ""
+
+msgid "Game Sensitivity Config"
+msgstr "游戏灵敏度设置"
+
+msgid "Game Sensitivity Description"
+msgstr "使用转动视角类型脚本时不再需要修改游戏内灵敏度"
+
+msgid "Game Sensitivity Switch"
+msgstr "开关"
+
+msgid "X-axis sensitivity"
+msgstr "游戏内水平灵敏度"
+
+msgid "Y-axis sensitivity"
+msgstr "游戏内垂直灵敏度"

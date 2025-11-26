@@ -559,7 +559,7 @@ class AutoEscortTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             # 确保窗口在前台，move_mouse_relative 需要窗口处于前台
             self.executor.device_manager.hwnd_window.bring_to_front()
            
-            if self.sensitivity_config['使用玩家灵敏度'] is True:
+            if self.sensitivity_config['Game Sensitivity Switch'] is True:
                 dx, dy = self.calculate_sensitivity(1.0, 1.0, dx, dy)
 
             interaction.move_mouse_relative(int(dx), int(dy))
@@ -574,7 +574,7 @@ class AutoEscortTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             # 确保窗口在前台
             self.executor.device_manager.hwnd_window.bring_to_front()
             
-            if self.sensitivity_config['使用玩家灵敏度'] is True:
+            if self.sensitivity_config['Game Sensitivity Switch'] is True:
                 dx, dy = self.calculate_sensitivity(1.0, 1.0, dx, dy)
 
             self._genshin_interaction.move_mouse_relative(int(dx), int(dy))
