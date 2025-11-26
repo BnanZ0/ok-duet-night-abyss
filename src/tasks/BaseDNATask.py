@@ -73,6 +73,7 @@ class BaseDNATask(BaseTask):
         self.old_mouse_pos = None
         self.next_monthly_card_start = 0
         self._logged_in = False
+        self.sensitivity_config = self.get_global_config('Game Sensitivity Config')  # 游戏灵敏度配置
 
     @property
     def f_search_box(self) -> Box:
@@ -381,6 +382,29 @@ class BaseDNATask(BaseTask):
         """
         return self.key_config['HelixLeap Key']
     
+        
+    def calculate_sensitivity(self, original_Xsensitivity, original_Ysensitivity, dx, dy):
+        """计算玩家水平鼠标移动值和垂直鼠标移动值
+
+        Returns:
+            int: 玩家水平鼠标移动值
+            int: 玩家垂直鼠标移动值
+
+        """
+        # 获取设置中的游戏灵敏度
+        game_Xsensitivity = round(self.sensitivity_config['X-axis sensitivity'], 1)
+        game_Ysensitivity = round(self.sensitivity_config['Y-axis sensitivity'], 1)
+
+        # 判断和计算
+        if original_Xsensitivity == game_Xsensitivity and original_Ysensitivity == game_Ysensitivity:
+            calculate_dx = dx
+            calculate_dy = dy
+        else:
+            calculate_dx = dx / round(game_Xsensitivity / original_Xsensitivity, 10)
+            calculate_dy = dy / round(game_Ysensitivity / original_Ysensitivity, 10)
+        
+        return calculate_dx, calculate_dy
+
     def try_bring_to_front(self):
         if not self.hwnd.is_foreground():
             win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)

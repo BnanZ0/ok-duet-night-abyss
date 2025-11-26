@@ -581,3 +581,18 @@ msgstr "Lowest owned count"
 
 msgid "最大轮数"
 msgstr "Max Rounds"
+
+msgid "Game Sensitivity Config"
+msgstr "In Game Sensitivity Config"
+
+msgid "Game Sensitivity Description"
+msgstr "When using a script of the rotation perspective type, there is no longer a need to adjust the in-game sensitivity"
+
+msgid "Game Sensitivity Switch"
+msgstr "Switch"
+
+msgid "X-axis sensitivity"
+msgstr "In-game horizontal sensitivity"
+
+msgid "Y-axis sensitivity"
+msgstr "In-game vertical sensitivity"

@@ -376,6 +376,13 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def play_macro_actions(self, map_index):
         actions = self.script[map_index]["actions"]
 
+        if "original_x_sensitivity" and "original_y_sensitivity" in self.script[map_index] :
+            self.original_Xsensitivity = self.script[map_index]["original_x_sensitivity"]
+            self.original_Ysensitivity = self.script[map_index]["original_y_sensitivity"]
+        else:
+            self.original_Xsensitivity = 1.0
+            self.original_Ysensitivity = 1.0
+        
         # 使用 perf_counter 获得更高精度的时间
         start_time = time.perf_counter()
 
@@ -411,7 +418,11 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         try:
             if action_type == "mouse_move":
-                self.execute_mouse_move(action['dx'], action['dy'])
+                # 判断设置中灵敏度开关是否打开
+                if self.sensitivity_config['Game Sensitivity Switch'] is True:
+                    self.execute_mouse_move_after_calculation(action['dx'], action['dy'])
+                else:
+                    self.execute_mouse_move(action['dx'], action['dy'])
 
             elif action_type == "mouse_rotation":
                 self.execute_mouse_rotation(action)
@@ -506,7 +517,11 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return
 
         dx, dy = direction_map[direction]
-        self.execute_mouse_move(dx, dy)
+        # 判断设置中灵敏度开关是否打开
+        if self.sensitivity_config['Game Sensitivity Switch'] is True:
+            self.execute_mouse_move_after_calculation(dx, dy)
+        else:
+            self.execute_mouse_move(dx, dy)
         logger.debug(f"鼠标视角旋转: {direction}, 角度: {angle}, 像素: {pixels}")
 
     def execute_mouse_move(self, dx, dy):
@@ -518,6 +533,18 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         # 使用缓存的实例
         self.genshin_interaction.move_mouse_relative(int(dx), int(dy))
 
+    def execute_mouse_move_after_calculation(self, dx, dy):
+        """
+        用于不同灵敏度
+
+        优化：复用 genshin_interaction 实例，避免频繁创建对象。
+        """
+        self.try_bring_to_front()
+
+        calculation_dx, calculation_dy = self.calculate_sensitivity(self.original_Xsensitivity, self.original_Ysensitivity, dx, dy)
+
+        # 使用缓存的实例
+        self.genshin_interaction.move_mouse_relative(int(calculation_dx), int(calculation_dy))
 
 def normalize_key(key: str) -> str:
     """
