@@ -123,10 +123,17 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     #     if self.current_round >= n:
     #         return True
 
+
     def find_track_point(self, x1, y1, x2, y2) -> bool:
         box = self.box_of_screen_scaled(2560, 1440, 2560 * x1, 1440 * y1, 2560 * x2, 1440 * y2, name="find_track_point",
                                         hcenter=True)
         return super().find_track_point(threshold=0.7, box=box)
+    
+    def find_next_hint(self, x1, y1, x2, y2, pattern, box_name='hint_text') -> bool:
+        """OCR识别：检测提示文本"""
+        box = self.box_of_screen(x1, y1, x2, y2, hcenter=True, name=box_name)
+        texts = self.ocr(box=box, target_height=1080)
+        return bool(find_boxes_by_name(texts, re.compile(pattern, re.IGNORECASE)))
     
     def _release_all_move_keys(self):
         """释放所有移动相关按键，防止卡键"""
@@ -134,8 +141,8 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         for k in keys:
             self.send_key_up(k)
 
-    def _path_no_elevator(self):
-        """路径逻辑：70皎皎币-无电梯"""
+    def _path_70_no_elevator(self):
+        """路径逻辑：70级皎皎币-无电梯"""
         self.send_key_down("w")
         self.sleep(0.1)
         self.send_key_down("a")
@@ -188,8 +195,8 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.sleep(0.1)
             self.send_key_up('a')
 
-    def _path_elevator_right(self):
-        """路径逻辑：70皎皎币-电梯右"""
+    def _path_70_elevator_right(self):
+        """路径逻辑：70级皎皎币-电梯右"""
         self.reset_and_transport()
         self.send_key('s', down_time=0.2, after_sleep=0.2)
         self.middle_click(after_sleep=0.2)
@@ -243,8 +250,8 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._release_all_move_keys()
         self.reset_and_transport()
 
-    def _path_elevator_left(self):
-        """路径逻辑：70皎皎币-电梯左"""
+    def _path_70_elevator_left(self):
+        """路径逻辑：70级皎皎币-电梯左"""
         self.reset_and_transport()
         self.send_key_down("lalt")
         self.sleep(0.05)
@@ -284,8 +291,8 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self._release_all_move_keys()
         self.reset_and_transport()
 
-    def _path_elevator_center(self):
-        """路径逻辑：70皎皎币-电梯中"""
+    def _path_70_elevator_center(self):
+        """路径逻辑：70级皎皎币-电梯中"""
         self.reset_and_transport()
         self.send_key_down("lalt")
         self.sleep(0.05)
@@ -315,34 +322,193 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self._release_all_move_keys()
         self.reset_and_transport()
+        #60路径来自于群内，欢迎署名
+    def _path_60_center_298m(self):
+        """路径逻辑：60级皎皎币-中298米"""
+        self.send_key_down('d')
+        self.sleep(0.1)
+        self.send_key_down('w')
+        self.sleep(0.1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.3)
+        self.send_key('space', down_time=0.3, after_sleep=0.2)
+        self.send_key_up('d')
+        self.sleep(0.4)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.8)
+        self.send_key('space', down_time=0.3, after_sleep=0.9)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.4)
+        self.send_key('space', down_time=0.3, after_sleep=0.3)
+        self.send_key_down('a')
+        self.sleep(0.2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.4)
+        self.send_key_up('a')
+        self.sleep(1)
+        self.send_key_up(self.get_dodge_key())
+        self.send_key_up('w')
+        self.reset_and_transport()
+        self.send_key_down('s')
+        self.sleep(0.1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1.5)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(2)
+        self.send_key(self.get_dodge_key(), down_time=0.8)
+        self.send_key_up('s')
+        self.reset_and_transport()
+        self.send_key_down('w')
+        self.sleep(0.1)
+        self.send_key(self.get_dodge_key(), down_time=0.6)
+        self.send_key(self.get_dodge_key(), down_time=0.6)
+        self.send_key_up('w')
+
+    def _path_60_center_285m(self):
+        """路径逻辑：60级皎皎币-中285米"""
+        self.send_key_down('d')
+        self.sleep(0.1)
+        self.send_key_down('w')
+        self.sleep(0.1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.3)
+        self.send_key('space', down_time=0.3, after_sleep=0.2)
+        self.send_key_up('d')
+        self.sleep(0.4)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.8)
+        self.send_key('space', down_time=0.3, after_sleep=0.9)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.4)
+        self.send_key('space', down_time=0.3, after_sleep=0.3)
+        self.send_key_down('a')
+        self.sleep(0.2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.4)
+        self.send_key_up('a')
+        self.sleep(1)
+        self.send_key_up(self.get_dodge_key())
+        self.send_key_up('w')
+        self.reset_and_transport()
+        self.send_key_down('s')
+        self.sleep(0.1)
+        self.send_key_down('d')
+        self.sleep(0.05)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.05)
+        self.send_key_up('d')
+        self.sleep(0.8)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1.2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1.8)
+        self.send_key_up(self.get_dodge_key())
+        self.send_key_up('s')
+        self.reset_and_transport()
+        self.send_key_down('w')
+        self.sleep(0.1)
+        self.send_key(self.get_dodge_key(), down_time=0.8)
+        self.send_key_up('w')
+
+    def _path_60_right(self):
+        """路径逻辑：60级皎皎币-右"""
+        self.reset_and_transport()
+        self.send_key_down('w')
+        self.send_key_down('d')
+        self.send_key('space', down_time=0.2)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.05)
+        self.send_key_up('w')
+        self.sleep(1)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(0.3)
+        self.send_key_down('s')
+        self.sleep(0.2)
+        self.send_key_up('s')
+        self.sleep(0.4)
+        self.send_key_down('w')
+        self.sleep(0.4)
+        self.send_key_up('w')
+        self.sleep(0.5)
+        self.send_key_down(self.get_dodge_key())
+        self.sleep(1)
+        self.send_key(self.get_dodge_key(), down_time=2.1)
+        self.sleep(0.1)
+        self.send_key_up('d')
+        self.reset_and_transport()
+        
+        # 检查是否在高处还是低处
+        if self.find_next_hint(0.44, 0.32, 0.50, 0.35, r'保护目标', '60_right_high'):
+            # 分支1-高处
+            self.send_key_down('w')
+            self.sleep(0.1)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(1.5)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(1.6)
+            self.send_key(self.get_dodge_key(), down_time=0.8)
+            self.send_key_up('w')
+        else:
+            # 分支2-低处
+            self.send_key_down('w')
+            self.sleep(0.1)
+            self.send_key_down('a')
+            self.sleep(0.05)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(0.05)
+            self.send_key_up('a')
+            self.sleep(1.2)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(1.2)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(1.8)
+            self.send_key_down(self.get_dodge_key())
+            self.sleep(1)
+            self.send_key_up(self.get_dodge_key())
+            self.send_key_up('w')
+        
+        self.reset_and_transport()
+        self.send_key_down('s')
+        self.sleep(0.1)
+        self.send_key(self.get_dodge_key(), down_time=0.6)
+        self.send_key(self.get_dodge_key(), down_time=0.6)
+        self.send_key_up('s')
 
     def walk_to_aim(self):
-        """
-        主寻路函数：根据识别到的坐标选择路径
-        """
+        """主寻路函数：根据识别到的坐标选择路径"""
         try:
             self.send_key_down("lalt")
-            self.sleep(2) # 保持原有的启动延迟
+            self.sleep(2)
 
-            # 使用 if-elif 结构，优先级清晰，且只执行一个分支
+            # 70级路径判断（使用图像匹配）
             if self.find_track_point(0.20, 0.54, 0.22, 0.59):
-                # 分支1：无电梯
-                self._path_no_elevator()
-                
+                self._path_70_no_elevator()
             elif self.find_track_point(0.66, 0.67, 0.69, 0.72):
-                # 分支2：电梯右
-                self._path_elevator_right()
-                
+                self._path_70_elevator_right()
             elif self.find_track_point(0.32, 0.67, 0.35, 0.73):
-                # 分支3：电梯左
-                self._path_elevator_left()
-                
+                self._path_70_elevator_left()
             elif self.find_track_point(0.50, 0.71, 0.53, 0.76):
-                # 分支4：电梯中
-                self._path_elevator_center()
+                self._path_70_elevator_center()
+            
+            # 60级路径判断（使用OCR识别）
+            elif self.find_next_hint(0.49, 0.24, 0.52, 0.27, r'298米', '60_distance_298'):
+                self._path_60_center_298m()
+            elif self.find_next_hint(0.49, 0.24, 0.52, 0.27, r'285米', '60_distance_285'):
+                self._path_60_center_285m()
+            elif self.find_next_hint(0.76, 0.305, 0.81, 0.335, r'保护目标', '60_right'):
+                self._path_60_right()
 
         except Exception as e:
             logger.error("Error in walk_to_aim", e)
-            # 可以在这里添加日志记录
         finally:
             self._release_all_move_keys()
