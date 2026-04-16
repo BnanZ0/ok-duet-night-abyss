@@ -156,8 +156,8 @@ config = {
     'gui_title': 'ok-dna',  # Optional
     'template_matching': {
         'coco_feature_json': os.path.join('assets', 'coco_annotations.json'), #coco格式标记, 需要png图片, 在debug模式运行后, 会对进行切图仅保留被标记部分以减少图片大小
-        'default_horizontal_variance': 0.002, #默认x偏移, 查找不传box的时候, 会根据coco坐标, match偏移box内的
-        'default_vertical_variance': 0.002, #默认y偏移
+        'default_horizontal_variance': 0.004, #默认x偏移, 查找不传box的时候, 会根据coco坐标, match偏移box内的
+        'default_vertical_variance': 0.004, #默认y偏移
         'default_threshold': 0.8, #默认threshold
         'feature_processor': process_feature,
     },

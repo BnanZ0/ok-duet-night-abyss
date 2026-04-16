@@ -104,19 +104,42 @@ class CommissionsTask(BaseDNATask):
         action_timeout = self.action_timeout if timeout == 0 else timeout
         box = self.box_of_screen_scaled(2560, 1440, 69, 969, 2498, 1331, name="reward_drag_area", hcenter=True)
         start_time = time.time()
-        while time.time() - start_time < action_timeout:
+        deadline = start_time + action_timeout
+        retry_press_count = 0
+        retry_seen = False
+        retry_stall_deadline = None
+
+        while time.time() < deadline:
             if self.find_retry_btn():
-                self.send_key("r", after_sleep=0.2)
+                retry_seen = True
+                if retry_press_count < 3:
+                    retry_press_count += 1
+                    if retry_stall_deadline is None:
+                        retry_stall_deadline = time.time() + 15
+                        deadline = max(deadline, retry_stall_deadline)
+                    self.send_key("r", after_sleep=0.2)
             elif (btn := self.find_bottom_start_btn() or self.find_big_bottom_start_btn()):
                 self.click_btn_random(btn, safe_move_box=box, after_sleep=0.2)
+
             if self.wait_until(condition=lambda: self.find_drop_rate_btn() or self.find_letter_interface(), time_out=1):
                 break
-            if self.find_retry_btn() and self.calculate_color_percentage(retry_btn_color,
-                                                                         self.get_box_by_name("retry_icon")) < 0.05:
+
+            # 云游戏/浏览器环境下颜色采样不稳定：不再依赖按钮颜色判断“不可继续”。
+            # 仅当检测到 retry_btn 但未进入后续界面时，最多按 3 次 R，并在首按后等待 15 秒仍无变化才判定为“任务无法继续”。
+            if (
+                retry_seen
+                and retry_press_count >= 3
+                and retry_stall_deadline is not None
+                and time.time() >= retry_stall_deadline
+            ):
                 self.soundBeep()
                 self.log_info_notify("任务无法继续")
                 raise TaskDisabledException
         else:
+            if retry_seen:
+                self.soundBeep()
+                self.log_info_notify("任务无法继续")
+                raise TaskDisabledException
             raise Exception("等待开始任务超时")
 
     def quit_mission(self, timeout=0):
