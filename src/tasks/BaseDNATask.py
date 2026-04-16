@@ -193,6 +193,16 @@ class BaseDNATask(BaseTask):
         if isinstance(box, Box):
             self.draw_boxes(box.name, box, "blue")
         return self.find_one('cancel_icon', threshold=threshold, box=box, template=template)
+    
+    def find_space_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
+        if isinstance(box, Box):
+            self.draw_boxes(box.name, box, "blue")
+        return self.find_one('space_icon', threshold=threshold, box=box, template=template)
+    
+    def find_esc_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
+        if isinstance(box, Box):
+            self.draw_boxes(box.name, box, "blue")
+        return self.find_one('esc_icon', threshold=threshold, box=box, template=template)
 
     def find_retry_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
         if isinstance(box, Box):

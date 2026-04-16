@@ -77,8 +77,8 @@ class CommissionsTask(BaseDNATask):
                                                                name="letter_reward_btn", hcenter=True))
 
     def find_drop_rate_btn(self, threshold=0):
-        return self.find_start_btn(
-            threshold=threshold, box=self.box_of_screen_scaled(2560, 1440, 1060, 915, 1420, 980, name="drop_rate_btn",
+        return self.find_space_btn(
+            threshold=threshold, box=self.box_of_screen_scaled(3840, 2160, 1978, 1380, width_original=590 ,height_original=71, name="drop_rate_btn",
                                                                hcenter=True))
 
     def find_esc_menu(self, threshold=0):
