@@ -535,15 +535,13 @@
             "image_id": 6,
             "category_id": 32,
             "bbox": [
-                91,
-                717,
+                97,
+                837,
                 16,
                 51
             ],
-            "area": 828.0399999999992,
-            "iscrowd": 0,
-            "ignore": 0,
-            "segmentation": []
+            "area": 816,
+            "iscrowd": 0
         },
         {
             "id": 13,
@@ -555,25 +553,21 @@
                 59,
                 43
             ],
-            "area": 2543.5876848290304,
-            "iscrowd": 0,
-            "ignore": 0,
-            "segmentation": []
+            "area": 2537,
+            "iscrowd": 0
         },
         {
             "id": 14,
             "image_id": 6,
             "category_id": 36,
             "bbox": [
-                3344,
-                1978,
+                3399,
+                1976,
                 55,
                 55
             ],
-            "area": 3025.57082292665,
-            "iscrowd": 0,
-            "ignore": 0,
-            "segmentation": []
+            "area": 3025,
+            "iscrowd": 0
         },
         {
             "id": 15,
