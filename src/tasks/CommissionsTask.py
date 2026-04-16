@@ -491,11 +491,11 @@ class CommissionsTask(BaseDNATask):
             return True
 
     def reset_and_transport(self):
-        # 1) 打开局内菜单（ESC 菜单）
+        # 1) 打开局内菜单(ESC 菜单)
         self.open_in_mission_menu()
         self.wait_until(
             condition=lambda: not self.find_esc_menu(),
-            # 2) 点击"设置"入口（局内菜单右下区域），点击后应关闭 ESC 菜单
+            # 2) 点击"设置"入口(局内菜单右下区域), 点击后应关闭 ESC 菜单
             post_action=lambda: self.click_relative_random(0.688, 0.875, 0.770, 0.956),
             time_out=10,
         )
@@ -504,7 +504,7 @@ class CommissionsTask(BaseDNATask):
                                         raise_if_not_found=True)
         self.wait_until(
             condition=lambda: self.calculate_color_percentage(setting_menu_selected_color, setting_other) > 0.24,
-            # 3) 点击“其他设置”页签（setting_other），直到该页签呈选中状态（通过颜色占比判断）
+            # 3) 点击“其他设置”页签(setting_other), 直到该页签呈选中状态(通过颜色占比判断)
             post_action=lambda: self.click_box_random(setting_other),
             time_out=10,
         )
@@ -513,7 +513,7 @@ class CommissionsTask(BaseDNATask):
         safe_box = self.box_of_screen_scaled(2560, 1440, 125, 207, 1811, 1234, name="safe_box", hcenter=True)
         self.wait_until(
             condition=lambda: self.find_start_btn(box=confirm_box),
-            # 4) 点击“重置角色/复位并传送”按钮（弹框确认按钮出现后点击）。safe_box 用于前台/非前台时的鼠标安全移动
+            # 4) 点击“重置角色/复位并传送”按钮(弹框确认按钮出现后点击). safe_box 用于前台/非前台时的鼠标安全移动
             post_action=lambda: self.click_relative_random(0.51, 0.5866667, 0.66875, 0.6188889, after_sleep=0.5, use_safe_move=True, safe_move_box=safe_box),
             time_out=10,
         )
@@ -521,7 +521,7 @@ class CommissionsTask(BaseDNATask):
         safe_box = self.box_of_screen_scaled(2560, 1440, 1298, 772, 1735, 846, name="safe_box", hcenter=True)
         self.wait_until(
             condition=lambda: not self.find_start_btn(box=confirm_box),
-            # 5) 点击确认弹框的“确认/确定”（确认按钮消失前后切换，用于保证弹框完成与关闭）
+            # 5) 点击确认弹框的“确认/确定”(确认按钮消失前后切换, 用于保证弹框完成与关闭)
             post_action=lambda: self.click_relative_random(0.531, 0.547, 0.671, 0.578, after_sleep=0.5, use_safe_move=True, safe_move_box=safe_box),
             time_out=10,
         )
