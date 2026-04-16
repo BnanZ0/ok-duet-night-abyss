@@ -495,8 +495,8 @@ class CommissionsTask(BaseDNATask):
         self.open_in_mission_menu()
         self.wait_until(
             condition=lambda: not self.find_esc_menu(),
-            # 2) 点击“设置”入口（局内菜单右下区域），点击后应关闭 ESC 菜单
-            post_action=self.click_relative_random(0.688, 0.875, 0.770, 0.956),
+            # 2) 点击"设置"入口（局内菜单右下区域），点击后应关闭 ESC 菜单
+            post_action=lambda: self.click_relative_random(0.688, 0.875, 0.770, 0.956),
             time_out=10,
         )
         setting_box = self.box_of_screen_scaled(2560, 1440, 738, 4, 1123, 79, name="other_section", hcenter=True)
