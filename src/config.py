@@ -111,7 +111,7 @@ config = {
     },
     'browser': {
         'url': 'https://dna.yingxiong.com/cloudgame/',
-        'resolution': (1600, 900),
+        'resolution': (1920, 1080),
         'nick': '云游戏(需要Win11并安装Edge)',
     },
     'start_timeout': 120,  # default 60
