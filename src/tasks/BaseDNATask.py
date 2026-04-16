@@ -149,11 +149,20 @@ class BaseDNATask(BaseTask):
 
     def in_team(self, frame=None) -> bool:
         _frame = self.frame if frame is None else frame
-        if self.find_one('lv_text', frame=frame, threshold=0.8):
+        if self.find_one('lv_text', frame=_frame, threshold=0.8):
             return True
         # start_time = time.perf_counter()
         mat = self.get_feature_by_name("ultimate_key_icon").mat
-        mat2 = self.box_of_screen(0.8832, 0.9132, 0.8977, 0.9389, name="ultimate_key_icon", hcenter=True).crop_frame(_frame)
+        mat2 = self.box_of_screen_scaled(
+            3840,
+            2160,
+            3361,
+            1954,
+            width_original=211,
+            height_original=89,
+            name="ultimate_key_icon",
+            hcenter=True,
+        ).crop_frame(_frame)
         max_area1 = invert_max_area_only(mat)[2]
         max_area2 = invert_max_area_only(mat2)[2]
         result = False
