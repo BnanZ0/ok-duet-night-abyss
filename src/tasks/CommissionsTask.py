@@ -112,7 +112,7 @@ class CommissionsTask(BaseDNATask):
         while time.time() < deadline:
             if self.find_retry_btn():
                 retry_seen = True
-                if retry_press_count < 3:
+                if retry_press_count < 5:
                     retry_press_count += 1
                     if retry_stall_deadline is None:
                         retry_stall_deadline = time.time() + 15
