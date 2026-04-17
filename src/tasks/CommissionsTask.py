@@ -117,6 +117,7 @@ class CommissionsTask(BaseDNATask):
                     if retry_stall_deadline is None:
                         retry_stall_deadline = time.time() + 15
                         deadline = max(deadline, retry_stall_deadline)
+                    self.send_key("r", after_sleep=0.3)
                     self.send_key("r", after_sleep=0.2)
             elif (btn := self.find_bottom_start_btn() or self.find_big_bottom_start_btn()):
                 self.click_btn_random(btn, safe_move_box=box, after_sleep=0.2)
@@ -125,10 +126,10 @@ class CommissionsTask(BaseDNATask):
                 break
 
             # 云游戏/浏览器环境下颜色采样不稳定：不再依赖按钮颜色判断“不可继续”。
-            # 仅当检测到 retry_btn 但未进入后续界面时，最多按 3 次 R，并在首按后等待 15 秒仍无变化才判定为“任务无法继续”。
+            # 仅当检测到 retry_btn 但未进入后续界面时，最多按 5 次 R，并在首按后等待 15 秒仍无变化才判定为“任务无法继续”。
             if (
                 retry_seen
-                and retry_press_count >= 3
+                and retry_press_count >= 5
                 and retry_stall_deadline is not None
                 and time.time() >= retry_stall_deadline
             ):
