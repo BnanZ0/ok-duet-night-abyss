@@ -204,7 +204,7 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if percentage == 100:
             self.runtime_state["in_progress"] = False
             self.mission_complete = True
-        elif percentage > 0:
+        elif percentage >= 0:
             self.runtime_state["in_progress"] = True
         if not self.runtime_state["in_progress"] and not self.mission_complete:
             _track_point = self.find_top_right_track_pos()
