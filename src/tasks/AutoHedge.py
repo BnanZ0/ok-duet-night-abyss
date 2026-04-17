@@ -47,6 +47,21 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.roulette_task = None
         self.maze_task = None
 
+    def _parse_serum_pct(self, text: str) -> int | None:
+        # OCR 结果可能包含前后缀与置信度等信息，例如："血清35%_1.00"
+        # 这里统一解析出进度数字（只保留 35），并兼容英文/全角百分号。
+        if not text:
+            return None
+        # 优先匹配“数字 + 百分号”，避免把其它数字（例如时间/编号/置信度）误当成进度
+        m = re.search(r"(\d{1,3})\s*[％%]", text)
+        if m:
+            return int(m.group(1))
+        # 兜底：只有数字但没有百分号时尝试取整；排除小数（例如 "_1.00"）
+        m = re.search(r"\b(\d{1,3})(?!\.\d)\b", text)
+        if m:
+            return int(m.group(1))
+        return None
+
     @property
     def config(self):
         if self.external_movement == _default_movement or not self._external_config:
@@ -205,18 +220,17 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if self.ocr_future and self.ocr_future.done():
             texts = self.ocr_future.result()
             self.ocr_future = None
-            if texts and "%" in texts[0].name:
-                name = texts[0].name.replace("%", "")
-                if name.isdigit():
-                    pct = int(name)
-                    if pct > self.last_ocr_result and pct <= 100:
-                        self.last_ocr_result = pct
-                        # self.info_set("进度", f"{pct}%")
+            if texts and getattr(texts[0], "name", None):
+                pct = self._parse_serum_pct(texts[0].name)
+                # 进度只接受 0~100 的递增值，避免 OCR 抖动导致进度回退
+                if pct is not None and pct > self.last_ocr_result and pct <= 100:
+                    self.last_ocr_result = pct
             return self.last_ocr_result
         if self.ocr_future is None:
-            box = self.box_of_screen_scaled(2560, 1440, 115, 490, 217, 550, name="process_info", hcenter=True)
+            box = self.box_of_screen_scaled(3840, 2160, 12, 494, width_original=625, height_original=508, name="process_info", hcenter=True)
             frame = self.frame.copy()
-            self.ocr_future = self.thread_pool_executor.submit(self.ocr, frame=frame, box=box, match=re.compile(r"\d+%"))
+            # 约束 OCR 目标为“数字 + 百分号”，减少误识别文本的干扰
+            self.ocr_future = self.thread_pool_executor.submit(self.ocr, frame=frame, box=box, match=re.compile(r"\d{1,3}\s*[％%]"))
         return self.last_ocr_result
 
     def find_top_right_track_pos(self):
