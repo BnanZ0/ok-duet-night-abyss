@@ -106,6 +106,16 @@ class CommissionsTask(BaseDNATask):
         start_time = time.time()
         deadline = start_time + action_timeout
         max_retry_press_count = 5
+        retry_click_box = self.box_of_screen_scaled(
+            3840,
+            2160,
+            2555,
+            1880,
+            2555 + 430,
+            1880 + 47,
+            name="retry_click_area",
+            hcenter=True,
+        )
         retry_press_count = 0
         retry_seen = False
         retry_stall_deadline = None
@@ -119,7 +129,13 @@ class CommissionsTask(BaseDNATask):
                     if retry_stall_deadline is None:
                         retry_stall_deadline = time.time() + 15
                         deadline = max(deadline, retry_stall_deadline)
-                    self.send_key("r", after_sleep=1)
+                    self.click_box_random(
+                        retry_click_box,
+                        down_time=0.02,
+                        after_sleep=0.5,
+                        use_safe_move=True,
+                        safe_move_box=box,
+                    )
             elif (btn := self.find_bottom_start_btn() or self.find_big_bottom_start_btn()):
                 self.click_btn_random(btn, safe_move_box=box, after_sleep=0.2)
 
