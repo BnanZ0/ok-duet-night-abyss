@@ -526,10 +526,12 @@ class CommissionsTask(BaseDNATask):
         setting_box = self.box_of_screen_scaled(2560, 1440, 738, 4, 1123, 79, name="other_section", hcenter=True)
         setting_other = self.wait_until(lambda: self.find_one("setting_other", box=setting_box), time_out=10,
                                         raise_if_not_found=True)
+        # 云游戏局内打开菜单必然卡一下
+        self.sleep(0.5)
         self.wait_until(
             condition=lambda: self.calculate_color_percentage(setting_menu_selected_color, setting_other) > 0.24,
-            # 3) 点击“其他设置”页签(setting_other), 直到该页签呈选中状态(通过颜色占比判断)
-            post_action=lambda: self.click_box_random(setting_other),
+            # 3) 点击“其他设置”页签(setting_other), 直到该页签呈选中状态(通过颜色占比判断)，点击不要那么频繁
+            post_action=lambda: self.click_box_random(setting_other, after_sleep=0.5),
             time_out=10,
         )
         self.sleep(0.5)
