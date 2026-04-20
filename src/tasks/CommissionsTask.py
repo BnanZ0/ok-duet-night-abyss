@@ -73,7 +73,7 @@ class CommissionsTask(BaseDNATask):
 
     def find_letter_reward_btn(self, threshold=0):
         return self.find_start_btn(
-            threshold=threshold, box=self.box_of_screen_scaled(2560, 1440, 1071, 1160, 1120, 1230,
+            threshold=threshold, box=self.box_of_screen_scaled(1600, 900, 666, 720, 666 + 275, 720 + 53,
                                                                name="letter_reward_btn", hcenter=True))
 
     def find_drop_rate_btn(self, threshold=0):
@@ -365,9 +365,19 @@ class CommissionsTask(BaseDNATask):
         if self.commission_config.get("自动处理密函", False):
             if self.commission_config.get("密函奖励偏好", "不使用") != "不使用":
                 self.choose_target_letter_reward()
+            confirm_click_box = self.box_of_screen_scaled(
+                1600,
+                900,
+                666,
+                720,
+                666 + 275,
+                720 + 53,
+                name="letter_reward_confirm",
+                hcenter=True,
+            )
             self.wait_until(
                 condition=lambda: not self.find_letter_reward_btn(),
-                post_action=lambda: self.click_relative_random(0.420, 0.812, 0.580, 0.847, after_sleep=0.25),
+                post_action=lambda: self.click_box_random(confirm_click_box, down_time=0.02, after_sleep=0.25),
                 time_out=action_timeout,
                 raise_if_not_found=True,
             )
