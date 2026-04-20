@@ -36,6 +36,12 @@ class CommissionsTask(BaseDNATask):
     def commission_skill_config(self):
         return self.get_task_by_class(CommissionSkillConfig).config
 
+    def get_letter_handle_mode(self):
+        mode = self.commission_config.get("自动处理密函", "自动选择第一个密函")
+        if mode in ("自动选择第一个密函", "直接开始", "等待用户选择"):
+            return mode
+        return "自动选择第一个密函"
+
     def setup_commission_config(self):
         self.default_config.update({
             "轮次": 5,
@@ -254,19 +260,39 @@ class CommissionsTask(BaseDNATask):
         if not hasattr(self, "config"):
             return
         action_timeout = self.action_timeout if timeout == 0 else timeout
-        if self.commission_config.get("自动处理密函", False):
+        mode = self.get_letter_handle_mode()
+        if mode == "等待用户选择":
+            self.log_info_notify("需自行选择密函")
+            self.soundBeep()
+            self.wait_until(
+                lambda: not self.find_letter_interface(),
+                time_out=300,
+                raise_if_not_found=True,
+            )
+            return
+        if mode in ("自动选择第一个密函", "直接开始"):
             if self.find_letter_interface():
                 box = self.box_of_screen(0.4432, 0.3556, 0.9750, 0.6037, name="letter_drag_area", hcenter=True)
-                not_use_edge = self.box_of_screen(0.4443, 0.3630, 0.4526, 0.4991, name="not_use_edge", hcenter=True)
-                self.sleep(0.1)
-                for _ in range(2):
-                    self.click_relative_random(0.5120, 0.3815, 0.5531, 0.4667, use_safe_move=True, safe_move_box=box, down_time=0.02, after_sleep=0.1)
-                    if self.wait_until(lambda: self.calculate_color_percentage(white_color, not_use_edge) < 0.05, time_out=1):
-                        break
-                else:
-                    self.log_info_notify("密函已耗尽")
-                    self.soundBeep()
-                    raise TaskDisabledException
+                if mode == "自动选择第一个密函":
+                    not_use_edge = self.box_of_screen(0.4443, 0.3630, 0.4526, 0.4991, name="not_use_edge", hcenter=True)
+                    self.sleep(0.1)
+                    for _ in range(2):
+                        self.click_relative_random(
+                            0.5120,
+                            0.3815,
+                            0.5531,
+                            0.4667,
+                            use_safe_move=True,
+                            safe_move_box=box,
+                            down_time=0.02,
+                            after_sleep=0.1,
+                        )
+                        if self.wait_until(lambda: self.calculate_color_percentage(white_color, not_use_edge) < 0.05, time_out=1):
+                            break
+                    else:
+                        self.log_info_notify("密函已耗尽")
+                        self.soundBeep()
+                        raise TaskDisabledException
                 
                 deadline = time.time() + action_timeout
                 while time.time() < deadline:
@@ -288,14 +314,6 @@ class CommissionsTask(BaseDNATask):
                     time_out=action_timeout,
                     raise_if_not_found=True,
                 )
-        else:
-            self.log_info_notify("需自行选择密函")
-            self.soundBeep()
-            self.wait_until(
-                lambda: not self.find_letter_interface(),
-                time_out=300,
-                raise_if_not_found=True,
-            )
 
     def choose_target_letter_reward(self):
         reward_pattern = re.compile(r'[:：]\s*([0-9]+)')
@@ -362,8 +380,17 @@ class CommissionsTask(BaseDNATask):
 
     def choose_letter_reward(self, timeout=0):
         action_timeout = self.action_timeout if timeout == 0 else timeout
-        if self.commission_config.get("自动处理密函", False):
-            if self.commission_config.get("密函奖励偏好", "不使用") != "不使用":
+        reward_strategy = self.commission_config.get("密函奖励偏好", "默认选择")
+        if reward_strategy == "等待用户选择":
+            self.log_info_notify("需自行选择密函奖励")
+            self.soundBeep()
+            self.wait_until(
+                lambda: not self.find_letter_reward_btn(),
+                time_out=300,
+                raise_if_not_found=True,
+            )
+        else:
+            if reward_strategy in ("持有数为0", "持有数最少", "持有数最多"):
                 self.choose_target_letter_reward()
             confirm_click_box = self.box_of_screen_scaled(
                 1600,
@@ -379,14 +406,6 @@ class CommissionsTask(BaseDNATask):
                 condition=lambda: not self.find_letter_reward_btn(),
                 post_action=lambda: self.click_box_random(confirm_click_box, down_time=0.02, after_sleep=0.25),
                 time_out=action_timeout,
-                raise_if_not_found=True,
-            )
-        else:
-            self.log_info_notify("需自行选择密函奖励")
-            self.soundBeep()
-            self.wait_until(
-                lambda: not self.find_letter_reward_btn(),
-                time_out=300,
                 raise_if_not_found=True,
             )
         self.sleep(0.1)

@@ -216,6 +216,24 @@ msgstr "Manual de encargos"
 msgid "委托手册指定轮次"
 msgstr "Oleadas especificadas en el Manual de encargos"
 
+msgid "密函处理方式：自动选择第一个密函 / 直接开始 / 等待用户选择"
+msgstr "Modo de cartas secretas: seleccionar la primera / iniciar directamente / esperar al usuario"
+
+msgid "自动选择第一个密函"
+msgstr "Seleccionar la primera carta secreta"
+
+msgid "直接开始"
+msgstr "Iniciar directamente"
+
+msgid "等待用户选择"
+msgstr "Esperar a que el usuario elija"
+
+msgid "默认选择"
+msgstr "Selección predeterminada"
+
+msgid "密函奖励选择策略：默认选择 / 持有数为0 / 持有数最少 / 持有数最多 / 等待用户选择"
+msgstr "Estrategia de recompensa: predeterminado / cantidad=0 / menor / mayor / esperar al usuario"
+
 msgid "密函奖励偏好"
 msgstr "Preferencia de recompensa de carta secreta"
 
