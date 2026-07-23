@@ -18,3 +18,8 @@ dependencies = [
 dev = [
     "polib>=1.2.0",
 ]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'win32'"
+]
