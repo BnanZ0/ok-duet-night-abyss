@@ -26,11 +26,10 @@ class AutoRogueDialogTask(BaseDNATask, TriggerTask):
         if (len(rogue_dialogs) == 1 and len(rogue_gift) == 0):
             self.click_box(rogue_dialogs)
         if self.ocr(
-                box=self.box_of_screen_scaled(2560, 1440, 2092, 1380, 2183, 1418, name="space_text", hcenter=True),
+                box=self.screen_box('ROGUE_SPACE_TEXT'),
                 match=re.compile("space", re.IGNORECASE)):
             self.send_key("space", down_time=3.5)
 
     def init_box(self):
-        self.rogue_dialog_box = self.box_of_screen_scaled(2560, 1440, 1504, 854, 1555, 1224, name="rogue_dialog",
-                                                          hcenter=True)
+        self.rogue_dialog_box = self.screen_box('ROGUE_DIALOG')
         self.template_shape = self.frame.shape[:2]

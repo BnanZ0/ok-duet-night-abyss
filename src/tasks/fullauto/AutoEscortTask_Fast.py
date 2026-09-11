@@ -978,7 +978,7 @@ class AutoEscortTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             while not ally_interaction and ally_interaction_check_count < 3:
                 self.sleep(0.500)
                 try:
-                    box = self.box_of_screen_scaled(2560, 1440, 850, 360, 1710, 1080, name="find_track_point", hcenter=True)
+                    box = self.screen_box('ESCORT_TRACK_POINT')
                     track_point = self.find_track_point(box=box, filter_track_color=True)
                     if track_point is None:
                         logger.info(f"未检测到 track_point，协战已打开门{self.door_count}")
@@ -1009,7 +1009,7 @@ class AutoEscortTask_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         if not self.target_found:
             self.sleep(delay)
 
-            target_health_bar_box = self.box_of_screen_scaled(1920, 1080, 38, 401, 284, 426, name="target_health_bar", hcenter=True)
+            target_health_bar_box = self.screen_box('ESCORT_TARGET_HP')
             self.draw_boxes("target_health_bar", [target_health_bar_box], color="blue")
             
             logger.debug(f"目标血条检测区域: {target_health_bar_box}")

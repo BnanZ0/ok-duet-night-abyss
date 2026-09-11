@@ -333,7 +333,7 @@ class ImportTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         # 1. 提取图像处理逻辑到循环外 (极大的性能提升)
         # 假设 box 定义不变，可以提取出来
-        box = self.box_of_screen_scaled(2560, 1440, 1, 1, 2559, 1439, name="full_screen", hcenter=True)
+        box = self.screen_box('FULL_SCREEN')
 
         # 只裁剪和转换一次屏幕
         frame = self.frame
