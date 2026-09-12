@@ -159,13 +159,17 @@ class CommissionsTask(BaseDNATask):
                 self.click_ui_coord(COORD.RESULT_AGAIN, name="start_mission_again",
                                     after_sleep=0.2, use_safe_move=True, safe_move_box=box)
                 clicked = True
-            elif self.find_manual_select_btn() or self.find_letter_interface():
+            elif self.find_manual_select_btn() or self.find_letter_interface() or self.in_team():
+                # in_team() 也算"已进入下一步"：无尽模式可以开游戏内自动确认，
+                # 中间的手册/密函弹窗会被系统秒确认跳过，直接进局内
                 return              # 已经进入下一步
             else:
                 self.next_frame()
                 continue
 
-            if self.wait_until(condition=lambda: self.find_manual_select_btn() or self.find_letter_interface(),
+            if self.wait_until(condition=lambda: self.find_manual_select_btn()
+                                           or self.find_letter_interface()
+                                           or self.in_team(),
                                time_out=2):
                 return
 

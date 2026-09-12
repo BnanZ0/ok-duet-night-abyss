@@ -158,6 +158,10 @@ class BaseDNATask(BaseTask):
                                          name=name, hcenter=hcenter)
 
     def in_team(self, frame=None) -> bool:
+        """是否在**局内**（回答"我在不在游戏里"，不是"我能不能打架"）。
+
+        盖着 HUD 的界面（ESC 菜单、设置页）也算局内，因为上面的 lv_text 还在。
+        """
         _frame = self.frame if frame is None else frame
         if self.find_one('lv_text', frame=_frame, threshold=0.8):
             return True

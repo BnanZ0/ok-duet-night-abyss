@@ -118,20 +118,82 @@ class TestUiLabels(TaskTestCase):
     def test_result_again_letter(self):
         self._check('result_letter.png', self.task.find_result_again_btn)
 
-    # ---- 局内判定 in_team()：lv_text 或 Q 键图标 ----
+    # ---- 局内判定 in_team()：lv_text 或 Q 键图标，只有局内为真 ----
 
     def test_in_team_on_hud(self):
-        self._check('hud_explore_round1.png', self.task.in_team)
+        self._check('hud_explore_round1.png', self.task.in_team, expected=True)
 
-    def test_in_team_not_on_start_screen(self):
-        """开始界面同位置是委托报酬面板，不能判成局内（不然会去按 ESC 找局内菜单）。"""
-        for shot in ('start_screen_expel.png', 'start_screen_letter.png', 'start_screen_defence.png',
-                     'start_screen_hedge.png', 'start_screen_survey.png', 'start_screen_explore_attr.png'):
+    def test_in_team_only_in_ingame(self):
+        """除局内 HUD 外，全部 25 张截图都必须判为**非局内**。
+
+        两个判据的余量（离线实测）：lv_text 局内 1.0000 / 反例最大 0.2322（阈值 0.8）；
+        Q 键图标局内 1.0000 / 反例最大 0.4716（阈值 0.9）。
+
+        为什么这条必须钉死：`in_team()` 一旦误报，任务会把准备界面/结算界面当成局内，
+        直接去按 ESC 找局内菜单然后超时；`start_mission()` 也会提前误判为"已进入下一步"。
+        """
+        not_ingame = (
+            # 开始界面（同位置是委托报酬面板，不是 Q 键图标）
+            'start_screen_expel.png', 'start_screen_letter.png', 'start_screen_defence.png',
+            'start_screen_hedge.png', 'start_screen_survey.png', 'start_screen_explore_attr.png',
+            # 结算界面
+            'result_explore.png', 'result_defence.png', 'result_expel.png',
+            'result_commission.png', 'result_letter.png',
+            # 弹窗
+            'manual_select_from_start.png', 'manual_select_after_result.png',
+            'manual_select_after_comm.png', 'manual_select_next_round.png',
+            'letter_select_from_start.png', 'letter_select_from_ingame.png',
+            'letter_select_after_result.png', 'letter_reward.png',
+            'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'reset_confirm.png',
+            # 局内菜单 / 设置页（有 HUD 背景但已经不在战斗界面）
+            'esc_menu.png', 'settings_other.png',
+        )
+        for shot in not_ingame:
             self._check(shot, self.task.in_team, expected=False)
 
-    def test_in_team_not_on_result(self):
-        for shot in ('result_expel.png', 'result_explore.png'):
-            self._check(shot, self.task.in_team, expected=False)
+    # ---- 开始任务：游戏内自动确认跳过中间弹窗时不能判定失败 ----
+
+    def test_start_mission_accepts_auto_confirm_to_ingame(self):
+        """点了「开始」之后中间弹窗被游戏自动确认跳过、直接进局内，也算成功。
+
+        踩过的隐患：start_mission 的成功出口原本只有"看到手册弹窗或密函界面"。
+        无尽模式开游戏内自动确认时那两个弹窗会被秒跳，脚本于是在这里反复点开始按钮，
+        20 秒后误判「任务无法继续」并停掉任务 —— 而游戏其实已经跑起来了。
+        """
+        task = self.task
+        calls = []
+
+        def not_found(*a, **kw):
+            return None
+
+        def in_team_after_click(*a, **kw):
+            # 点过按钮之后就已经在局内（游戏自动确认跳过了中间弹窗）
+            return len(calls) >= 1
+
+        def click(coord, **kw):
+            calls.append(coord)
+            # 封顶：没有 in_team() 出口时会反复点，这里拦住以免测试跑满整个超时
+            if len(calls) > 20:
+                raise AssertionError('start_mission 反复点击开始按钮，说明 in_team() 出口失效')
+
+        original = (task.find_start_btn, task.find_result_again_btn,
+                    task.find_manual_select_btn, task.find_letter_interface,
+                    task.in_team, task.click_ui_coord)
+        task.find_start_btn = lambda *a, **kw: 'start_btn'
+        task.find_result_again_btn = not_found
+        task.find_manual_select_btn = not_found
+        task.find_letter_interface = not_found
+        task.in_team = in_team_after_click
+        task.click_ui_coord = click
+        try:
+            task.start_mission(timeout=5)          # 不应抛异常
+        finally:
+            (task.find_start_btn, task.find_result_again_btn,
+             task.find_manual_select_btn, task.find_letter_interface,
+             task.in_team, task.click_ui_coord) = original
+        self.assertEqual(calls, [COORD.START_SCREEN_BTN],
+                         '只应点一次开始按钮，不该反复点，实际: %s' % (calls,))
 
     # ---- 自动选择密函：走的是不依赖检测的固定区域 + 固定坐标 ----
 
