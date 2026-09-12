@@ -8,6 +8,9 @@ supported-markers = [
     "sys_platform == 'win32'",
 ]
 
+[manifest]
+excludes = [{ package = { name = "pyside6-fluent-widgets" }, dependencies = ["pyside6"] }]
+
 [[package]]
 name = "certifi"
 version = "2026.2.25"
@@ -122,29 +125,33 @@ name = "ok-duet-night-abyss"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "ok-script", marker = "sys_platform == 'win32'" },
-    { name = "onnxocr-ppocrv5", marker = "sys_platform == 'win32'" },
-    { name = "opencv-python", marker = "sys_platform == 'win32'" },
-    { name = "openvino", marker = "sys_platform == 'win32'" },
-    { name = "playwright", marker = "sys_platform == 'win32'" },
-    { name = "pynput", marker = "sys_platform == 'win32'" },
-    { name = "pyside6", marker = "sys_platform == 'win32'" },
+    { name = "ok-script", extra = ["ocr", "qt"] },
+    { name = "onnxocr-ppocrv5" },
+    { name = "opencv-python" },
+    { name = "openvino" },
+    { name = "playwright" },
+    { name = "pynput" },
+    { name = "pyside6-essentials" },
+    { name = "pyside6-fluent-widgets" },
+    { name = "pywin32" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "polib", marker = "sys_platform == 'win32'" },
+    { name = "polib" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ok-script", specifier = ">=1.0.105" },
-    { name = "onnxocr-ppocrv5", specifier = ">=0.0.14" },
+    { name = "ok-script", extras = ["ocr", "qt"], specifier = ">=2.0.6" },
+    { name = "onnxocr-ppocrv5", specifier = ">=0.0.22" },
     { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "openvino", specifier = ">=2026.1.0" },
     { name = "playwright", specifier = ">=1.58.0" },
     { name = "pynput", specifier = "==1.8.1" },
-    { name = "pyside6", specifier = "==6.9.1" },
+    { name = "pyside6-essentials", specifier = "==6.11.2" },
+    { name = "pyside6-fluent-widgets", specifier = "==1.11.3" },
+    { name = "pywin32", specifier = "==311" },
 ]
 
 [package.metadata.requires-dev]
@@ -152,36 +159,47 @@ dev = [{ name = "polib", specifier = ">=1.2.0" }]
 
 [[package]]
 name = "ok-script"
-version = "1.0.105"
+version = "2.0.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mouse", marker = "sys_platform == 'win32'" },
-    { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pyappify", marker = "sys_platform == 'win32'" },
-    { name = "pycaw", marker = "sys_platform == 'win32'" },
-    { name = "pydirectinput", marker = "sys_platform == 'win32'" },
-    { name = "pyside6-fluent-widgets", marker = "sys_platform == 'win32'" },
-    { name = "pywin32", marker = "sys_platform == 'win32'" },
-    { name = "requests", marker = "sys_platform == 'win32'" },
-    { name = "typing-extensions", marker = "sys_platform == 'win32'" },
+    { name = "mouse" },
+    { name = "psutil" },
+    { name = "pyappify" },
+    { name = "pycaw" },
+    { name = "pydirectinput" },
+    { name = "pynput" },
+    { name = "pywin32" },
+    { name = "requests" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/55/ee6e477cf69f9a7748216d46ae6ffb54fc89bf34996cef0615221bfb918d/ok_script-1.0.105.tar.gz", hash = "sha256:ee546e5a24f3a9d36fba21ccc4c27670508f8606113aa376621d8f889d2ef9fa", size = 964775, upload-time = "2026-04-16T13:49:25.78Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/b8/08aaf891f4b4bff5ccd3d9e9f9c7f9bf2500062e2ff0290d52c31f207575/ok_script-2.0.6.tar.gz", hash = "sha256:21c336a872302e144775cfd6842f1ce1f56151540b537046b2554dd52399b035", size = 1082951, upload-time = "2026-08-28T10:00:24.535Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/1d/1dc41ae1f406222f90a961887ef01be5eb8fb9ad8df516d6953f1538d767/ok_script-1.0.105-py3-none-any.whl", hash = "sha256:d3d7a2a20f214d73faa68c98de828e0c1b6e366cad34c0fc76e9ca54c7573666", size = 1038737, upload-time = "2026-04-16T13:49:23.036Z" },
+    { url = "https://files.pythonhosted.org/packages/64/a4/0bdac442c5d404c77eee9148416bcf2def296dbba0fd1b33fa6fe331e76d/ok_script-2.0.6-py3-none-any.whl", hash = "sha256:db296ac242376eb42d887f5bfd9c70d15a42a2979e7d16e342a3badb55e3c7e1", size = 1113287, upload-time = "2026-08-28T10:00:21.86Z" },
+]
+
+[package.optional-dependencies]
+ocr = [
+    { name = "onnxocr-ppocrv5" },
+]
+qt = [
+    { name = "darkdetect" },
+    { name = "pyside6-essentials" },
+    { name = "pyside6-fluent-widgets" },
+    { name = "pysidesix-frameless-window" },
 ]
 
 [[package]]
 name = "onnxocr-ppocrv5"
-version = "0.0.14"
+version = "0.0.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pillow", marker = "sys_platform == 'win32'" },
-    { name = "pyclipper", marker = "sys_platform == 'win32'" },
-    { name = "shapely", marker = "sys_platform == 'win32'" },
+    { name = "pillow" },
+    { name = "pyclipper" },
+    { name = "shapely" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/cb/5eb9b54177a26576ddf190bbf077e21d3b60f840108328591c963272211f/onnxocr_ppocrv5-0.0.14.tar.gz", hash = "sha256:503e59486fa97a5dd941f75801fd1cc56629bf1c38c766385392a09c86e67d89", size = 19160874, upload-time = "2026-03-10T18:15:16.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/6b/3ad789899e7da9008e83a477abf55551696622234de0e23cb96912e1e958/onnxocr_ppocrv5-0.0.22.tar.gz", hash = "sha256:08ca735a2038e5fc61038935b9010438f33b7e63f0eea7c5ecf468a56ee48bb5", size = 19168126, upload-time = "2026-08-28T09:50:29.045Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/29/672c338769a4265febbc1ac91618dae7bc26229d2af1f8179038f8282166/onnxocr_ppocrv5-0.0.14-py3-none-any.whl", hash = "sha256:0eeb3affd03f05381cf4315eb2172116e6c309d3a4a231c12d8d6fae1b830caf", size = 19173226, upload-time = "2026-03-10T18:15:00.021Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/f9/84b4217ee8524d9b057523bb7deb7e339d39c7131dbe532cefdbb4955d74/onnxocr_ppocrv5-0.0.22-py3-none-any.whl", hash = "sha256:b98271ce876d9720c788c437d69f63469cad53cb19945da843dbbe46f8a1271a", size = 19176168, upload-time = "2026-08-28T09:50:26.214Z" },
 ]
 
 [[package]]
@@ -189,7 +207,7 @@ name = "opencv-python"
 version = "4.13.0.92"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", marker = "sys_platform == 'win32'" },
+    { name = "numpy" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/17/de5458312bcb07ddf434d7bfcb24bb52c59635ad58c6e7c751b48949b009/opencv_python-4.13.0.92-cp37-abi3-win32.whl", hash = "sha256:372fe164a3148ac1ca51e5f3ad0541a4a276452273f503441d718fab9c5e5f59", size = 30932638, upload-time = "2026-02-05T07:02:14.98Z" },
@@ -201,8 +219,8 @@ name = "openvino"
 version = "2026.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", marker = "sys_platform == 'win32'" },
-    { name = "openvino-telemetry", marker = "sys_platform == 'win32'" },
+    { name = "numpy" },
+    { name = "openvino-telemetry" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/73/cb/07035dcbf60347c0706c4f8d3ffb003c34fe8205e4041699a6655cc858c3/openvino-2026.1.0-21367-cp312-cp312-win_amd64.whl", hash = "sha256:21fbc8f9aa765d9ded024311f4e48e38118643cda0f0139dcfa5422c0c457eb6", size = 71174500, upload-time = "2026-04-07T14:18:41.069Z" },
@@ -260,8 +278,8 @@ name = "playwright"
 version = "1.58.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet", marker = "sys_platform == 'win32'" },
-    { name = "pyee", marker = "sys_platform == 'win32'" },
+    { name = "greenlet" },
+    { name = "pyee" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0e/4b/236e60ab9f6d62ed0fd32150d61f1f494cefbf02304c0061e78ed80c1c32/playwright-1.58.0-py3-none-win32.whl", hash = "sha256:1e03be090e75a0fabbdaeab65ce17c308c425d879fa48bb1d7986f96bfad0b99", size = 36815998, upload-time = "2026-01-30T15:09:39.627Z" },
@@ -294,11 +312,11 @@ wheels = [
 
 [[package]]
 name = "pyappify"
-version = "1.0.2"
+version = "1.0.13"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/39/e5/597b9d4c36d94bc30da6ee71df22eee0d225d9f532aebb87009bccc8ce7f/pyappify-1.0.2.tar.gz", hash = "sha256:32219317728c00fe28e7f46e0b64fd512ad19b9c9f7215ee9af80eabdabf426e", size = 3511, upload-time = "2025-07-09T15:40:42.701Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/df/a93ed9c7a61e62f4be33a016a16f61b7af9b584cc7707297a3c32482fe1c/pyappify-1.0.13.tar.gz", hash = "sha256:6cf27666e63f090d591680a5d73cbd090047359ea0af817e46d36b76924b0603", size = 9305, upload-time = "2026-08-17T05:18:10.446Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/be/23071230f28072745ce9b249d6b9ee04c9e73341bf5035636af776dcfeff/pyappify-1.0.2-py3-none-any.whl", hash = "sha256:35f87fd87d75588c223be1eea1c4707be752026231a7d0add3f9a92bba8f99ba", size = 3557, upload-time = "2025-07-09T15:40:41.808Z" },
+    { url = "https://files.pythonhosted.org/packages/49/9d/0354fd829ca45d9747bf829837ca058ffff5cf546e34e393e612ccbc67f4/pyappify-1.0.13-py3-none-any.whl", hash = "sha256:bd10bdefd71fd774a299a52fa42a1e64280b9979fe22c181c3ef6f2094890654", size = 9920, upload-time = "2026-08-17T05:18:09.44Z" },
 ]
 
 [[package]]
@@ -306,8 +324,8 @@ name = "pycaw"
 version = "20240210"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "comtypes", marker = "sys_platform == 'win32'" },
-    { name = "psutil", marker = "sys_platform == 'win32'" },
+    { name = "comtypes" },
+    { name = "psutil" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3b/1a/f1fa3ceca06eceb5184b907413306b99dd790855ffdf2aee8210fa0fc192/pycaw-20240210.tar.gz", hash = "sha256:55e49359e9f227053f4fa15817a02d4a7bc52fc3db32e123894719a123c41d06", size = 22417, upload-time = "2024-02-21T10:55:05.503Z" }
 wheels = [
@@ -344,7 +362,7 @@ name = "pyee"
 version = "13.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "sys_platform == 'win32'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8b/04/e7c1fe4dc78a6fdbfd6c337b1c3732ff543b8a397683ab38378447baa331/pyee-13.0.1.tar.gz", hash = "sha256:0b931f7c14535667ed4c7e0d531716368715e860b988770fc7eb8578d1f67fc8", size = 31655, upload-time = "2026-02-14T21:12:28.044Z" }
 wheels = [
@@ -356,9 +374,9 @@ name = "pynput"
 version = "1.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "evdev", marker = "sys_platform == 'win32' and 'linux' in sys_platform" },
-    { name = "python-xlib", marker = "sys_platform == 'win32' and 'linux' in sys_platform" },
-    { name = "six", marker = "sys_platform == 'win32'" },
+    { name = "evdev", marker = "'linux' in sys_platform" },
+    { name = "python-xlib", marker = "'linux' in sys_platform" },
+    { name = "six" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/c3/dccf44c68225046df5324db0cc7d563a560635355b3e5f1d249468268a6f/pynput-1.8.1.tar.gz", hash = "sha256:70d7c8373ee98911004a7c938742242840a5628c004573d84ba849d4601df81e", size = 82289, upload-time = "2025-03-17T17:12:01.481Z" }
 wheels = [
@@ -366,56 +384,28 @@ wheels = [
 ]
 
 [[package]]
-name = "pyside6"
-version = "6.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyside6-addons", marker = "sys_platform == 'win32'" },
-    { name = "pyside6-essentials", marker = "sys_platform == 'win32'" },
-    { name = "shiboken6", marker = "sys_platform == 'win32'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/ff/95c941f53b0faebc27dbe361d8e971b77f504b9cf36f8f5d750fd82cd6fc/PySide6-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:c82dbb7d32bbdd465e01059174f71bddc97de152ab71bded3f1907c40f9a5f16", size = 564571, upload-time = "2025-06-03T13:20:10.321Z" },
-    { url = "https://files.pythonhosted.org/packages/d1/ef/0aa5e910fa4e9770db6b45c23e360a52313922e0ca71fc060a57db613de1/PySide6-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:1525d63dc6dc425b8c2dc5bc01a8cb1d67530401449f3a3490c09a14c095b9f9", size = 401793, upload-time = "2025-06-03T13:20:12.108Z" },
-]
-
-[[package]]
-name = "pyside6-addons"
-version = "6.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyside6-essentials", marker = "sys_platform == 'win32'" },
-    { name = "shiboken6", marker = "sys_platform == 'win32'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/be/a849402f7e73d137b5ae8b4370a49b0cf0e0c02f028b845782cb743e4995/PySide6_Addons-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:cd93a3a5e3886cd958f3a5acc7c061c24f10a394ce9f4ce657ac394544ca7ec2", size = 143150906, upload-time = "2025-06-03T13:09:12.762Z" },
-    { url = "https://files.pythonhosted.org/packages/2a/f1/1bb6b5859aff4e2b3f5ef789b9cee200811a9f469f04d9aa7425e816622b/PySide6_Addons-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:4f589631bdceb518080ae9c9fa288e64f092cd5bebe25adc8ad89e8eadd4db29", size = 26938762, upload-time = "2025-06-03T13:09:20.009Z" },
-]
-
-[[package]]
 name = "pyside6-essentials"
-version = "6.9.1"
+version = "6.11.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "shiboken6", marker = "sys_platform == 'win32'" },
+    { name = "shiboken6" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/a9/a8e0209ba9116f2c2db990cfb79f2edbd5a3a428013be2df1f1cddd660a9/PySide6_Essentials-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:ad1ac94011492dba33051bc33db1c76a7d6f815a81c01422cb6220273b369145", size = 72435676, upload-time = "2025-06-03T13:13:08.805Z" },
-    { url = "https://files.pythonhosted.org/packages/d0/e4/23268c57e775a1a4d2843d288a9583a47f2e4b3977a9ae93cb9ded1a4ea5/PySide6_Essentials-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:35c2c2bb4a88db74d11e638cf917524ff35785883f10b439ead07960a5733aa4", size = 49483707, upload-time = "2025-06-03T13:13:16.399Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/09/d2662684aee4d3f027ff9b1e965f22301bc28ffc5b7f167658508e4475dc/pyside6_essentials-6.11.2-cp310-abi3-win_amd64.whl", hash = "sha256:c8a29def77032773a30879f7f24415b5395ad08592d147c170824ef4c735dfc1", size = 76913043, upload-time = "2026-08-18T06:36:54.038Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/87/4dd2a6468cea600da1fcf9c7f02bc248eeaa98cdc75658e48e669d95326a/pyside6_essentials-6.11.2-cp310-abi3-win_arm64.whl", hash = "sha256:fadd75c5c20800d64dd0a586ea8cb337c5e630aa2246df0e5105738afa46e02c", size = 58125520, upload-time = "2026-08-18T06:36:59.073Z" },
 ]
 
 [[package]]
 name = "pyside6-fluent-widgets"
-version = "1.8.3"
+version = "1.11.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "darkdetect", marker = "sys_platform == 'win32'" },
-    { name = "pyside6", marker = "sys_platform == 'win32'" },
-    { name = "pysidesix-frameless-window", marker = "sys_platform == 'win32'" },
+    { name = "darkdetect" },
+    { name = "pysidesix-frameless-window" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/2d/3564621b45e5f988d07712c7431a9895cdf21df9e94d10750e1954b650dc/pyside6_fluent_widgets-1.8.3.tar.gz", hash = "sha256:03d94a4451a97eb58a1802894bd11321b493045fc16ba2940417383e1b767811", size = 1439214, upload-time = "2025-06-28T04:01:41.904Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/fa/7ccdf706cf06aa07be142d52606f10c84a0800f9c890faffc097a635c6b1/pyside6_fluent_widgets-1.11.3.tar.gz", hash = "sha256:bfb86a12e0d88edf1a1b4327b79e84767771ba0d2a294c4cb1fe170e026ebc16", size = 1455676, upload-time = "2026-08-01T02:46:14.835Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/6f/97ea33bef6c18eae51ceb783c5f008282ef564cdb38963e2e3b14cb11484/pyside6_fluent_widgets-1.8.3-py3-none-any.whl", hash = "sha256:5a7d1f97d653d0c3c658a006698a32ff0876f00f14fdda327d3ef5a5f883ec61", size = 1531779, upload-time = "2025-06-28T04:01:39.823Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/b2/5c675b4d56eddeff0930b9e6b1be2fc75f0535dd86d1add3d24b5dd796f6/pyside6_fluent_widgets-1.11.3-py3-none-any.whl", hash = "sha256:f2bece3ba45ef1a222d12cff89c4ffc9505644ee25c9db9c1d2175f59231973d", size = 1549200, upload-time = "2026-08-01T02:46:13.498Z" },
 ]
 
 [[package]]
@@ -423,7 +413,7 @@ name = "pysidesix-frameless-window"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "pywin32" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e7/44/ee4b9ead46ec5fcc4d9a303f6ac82cb17b0e188bfe629ef962c4046cded5/pysidesix_frameless_window-0.8.1.tar.gz", hash = "sha256:95eefa64abdaca9d730bc097fd39e2cd07d3443a47a1645cc936a0076996d7cd", size = 23378, upload-time = "2026-03-21T02:04:36.72Z" }
 wheels = [
@@ -435,7 +425,7 @@ name = "python-xlib"
 version = "0.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six", marker = "sys_platform == 'win32'" },
+    { name = "six" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/86/f5/8c0653e5bb54e0cbdfe27bf32d41f27bc4e12faa8742778c17f2a71be2c0/python-xlib-0.33.tar.gz", hash = "sha256:55af7906a2c75ce6cb280a584776080602444f75815a7aff4d287bb2d7018b32", size = 269068, upload-time = "2022-12-25T18:53:00.824Z" }
 wheels = [
@@ -463,10 +453,10 @@ name = "requests"
 version = "2.33.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "certifi", marker = "sys_platform == 'win32'" },
-    { name = "charset-normalizer", marker = "sys_platform == 'win32'" },
-    { name = "idna", marker = "sys_platform == 'win32'" },
-    { name = "urllib3", marker = "sys_platform == 'win32'" },
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "idna" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5f/a4/98b9c7c6428a668bf7e42ebb7c79d576a1c3c1e3ae2d47e674b468388871/requests-2.33.1.tar.gz", hash = "sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517", size = 134120, upload-time = "2026-03-30T16:09:15.531Z" }
 wheels = [
@@ -478,7 +468,7 @@ name = "shapely"
 version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", marker = "sys_platform == 'win32'" },
+    { name = "numpy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4d/bc/0989043118a27cccb4e906a46b7565ce36ca7b57f5a18b78f4f1b0f72d9d/shapely-2.1.2.tar.gz", hash = "sha256:2ed4ecb28320a433db18a5bf029986aa8afcfd740745e78847e330d5d94922a9", size = 315489, upload-time = "2025-09-24T13:51:41.432Z" }
 wheels = [
@@ -496,11 +486,11 @@ wheels = [
 
 [[package]]
 name = "shiboken6"
-version = "6.9.1"
+version = "6.11.2"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/56/00af281275aab4c79e22e0ea65feede0a5c6da3b84e86b21a4a0071e0744/shiboken6-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:209ccf02c135bd70321143dcbc5023ae0c056aa4850a845955dd2f9b2ff280a9", size = 1153587, upload-time = "2025-06-03T13:16:50.454Z" },
-    { url = "https://files.pythonhosted.org/packages/de/ce/6ccd382fbe1a96926c5514afa6f2c42da3a9a8482e61f8dfc6068a9ca64f/shiboken6-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:2a39997ce275ced7853defc89d3a1f19a11c90991ac6eef3435a69bb0b7ff1de", size = 1831623, upload-time = "2025-06-03T13:16:52.468Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/6b/fee1b4814317e4664e318644c9c007676c65a71e5b2b9d3ac4121a94dc0a/shiboken6-6.11.2-cp310-abi3-win_amd64.whl", hash = "sha256:6ab0eba1c904455df621f9a6df3ca2bb896bab8670572d2bc4e37804ae91f19a", size = 1226578, upload-time = "2026-08-18T06:37:18.002Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/b5/80c4e5aafeb8ac777cf5a1becfe87ac7197c35051df00b5f7819787e09d5/shiboken6-6.11.2-cp310-abi3-win_arm64.whl", hash = "sha256:97c49432488df958f0308736f3d15b6915d8826fc380af17bb4b9ec5c4a5e81b", size = 1784669, upload-time = "2026-08-18T06:37:21.046Z" },
 ]
 
 [[package]]

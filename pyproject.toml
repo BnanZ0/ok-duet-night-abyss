@@ -5,13 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "ok-script>=1.0.105",
-    "onnxocr-ppocrv5>=0.0.14",
+    "ok-script[ocr,qt]>=2.0.6",
+    "onnxocr-ppocrv5>=0.0.22",
     "opencv-python>=4.13.0.92",
     "openvino>=2026.1.0",
     "playwright>=1.58.0",
     "pynput==1.8.1",
-    "pyside6==6.9.1",
+    "PySide6-Essentials==6.11.2",
+    "pyside6-fluent-widgets==1.11.3",
+    "pywin32==311"
 ]
 
 [dependency-groups]
@@ -22,4 +24,9 @@ dev = [
 [tool.uv]
 environments = [
     "sys_platform == 'win32'"
+]
+
+exclude-dependencies = [
+    { package = { name = "pyside6-fluent-widgets" },
+      dependencies = ["pyside6"] },
 ]
