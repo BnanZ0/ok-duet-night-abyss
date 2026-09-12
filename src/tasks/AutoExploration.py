@@ -151,7 +151,10 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return True
 
     def find_serum(self):
-        box = self.box_of_screen(0.022, 0.385, 0.032, 0.456, name="serum_icon", hcenter=True)
+        # 判据：局内左侧的"血清水滴"图标（进战斗后才出现，用来判断是否已进入战斗）
+        # 标注在新截图上：bbox (28,332,30,52) @1600x900
+        # 搜索框 = bbox 外扩，必须**包住** bbox，否则永远匹配不到（旧代码这里就是错位的）
+        box = self.screen_box('SERUM_ICON')
         if self.width < 1920 and self.height < 1080:
             threshold = 0.7
         else:

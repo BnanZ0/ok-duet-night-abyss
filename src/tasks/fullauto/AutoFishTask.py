@@ -94,7 +94,7 @@ class AutoFishTask(DNAOneTimeTask, BaseDNATask):
     def find_fish_chance(self) -> tuple[bool, tuple]:
         """查找 fish_chance 图标（授渔以鱼），返回 (found, center)"""
         CHANCE_THRESHOLD = 0.8  # fish_chance 匹配阈值
-        fish_chance_box = self.box_of_screen_scaled(3840, 2160, 3269, 1672, 3505, 1908, name="fish_chance")
+        fish_chance_box = self.screen_box('FISH_CHANCE')
         box = self.find_one("fish_chance", box=fish_chance_box, threshold=CHANCE_THRESHOLD)
         if box:
             return True, (box.x + box.width // 2, box.y + box.height // 2)

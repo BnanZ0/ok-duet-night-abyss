@@ -1,6 +1,7 @@
 from ok import Logger, TaskDisabledException
 from qfluentwidgets import FluentIcon
 
+from src.dna_ui.Defs import REF_WIDTH, REF_HEIGHT
 from src.tasks.AutoExploration import AutoExploration
 from src.tasks.CommissionsTask import CommissionsTask, QuickAssistTask
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
@@ -262,7 +263,9 @@ class AutoExploration_Fast(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return True
 
     def find_track_point(self, x1, y1, x2, y2) -> bool:
-        box = self.box_of_screen_scaled(2560, 1440, 2560*x1, 1440*y1, 2560*x2, 1440*y2, name="find_track_point", hcenter=True)
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, REF_WIDTH * x1, REF_HEIGHT * y1,
+                                                       REF_WIDTH * x2, REF_HEIGHT * y2,
+                                                       name="find_track_point", hcenter=True)
         result = super().find_track_point(threshold=0.7, box=box)
         # 调试信息：记录检测结果
         logger.debug(f"地图检测点 ({x1}, {y1}, {x2}, {y2}) 检测结果: {result}")

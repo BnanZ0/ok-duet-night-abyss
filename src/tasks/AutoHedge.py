@@ -213,13 +213,13 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                         self.last_ocr_result = pct
             return self.last_ocr_result
         if self.ocr_future is None:
-            box = self.box_of_screen_scaled(3840, 2160, 12, 494, width_original=625, height_original=508, name="process_info", hcenter=True)
+            box = self.screen_box('HEDGE_PROCESS_INFO')
             frame = self.frame.copy()
             self.ocr_future = self.thread_pool_executor.submit(self.ocr, frame=frame, box=box, match=re.compile(r"\d{1,3}\s*[％%]"))
         return self.last_ocr_result
 
     def find_top_right_track_pos(self):
-        box = self.box_of_screen_scaled(2560, 1440, 2183, 82, 2414, 140, name="track_point", hcenter=True)
+        box = self.screen_box('HEDGE_TRACK_POINT')
         template = cv2.resize(self.get_feature_by_name("track_point").mat, None, fx=0.79, fy=0.79,
                               interpolation=cv2.INTER_LINEAR)
         ret = -1

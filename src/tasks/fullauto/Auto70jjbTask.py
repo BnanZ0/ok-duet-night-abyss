@@ -2,6 +2,7 @@ from qfluentwidgets import FluentIcon
 import time
 
 from ok import Logger, TaskDisabledException
+from src.dna_ui.Defs import REF_WIDTH, REF_HEIGHT
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
 from src.tasks.CommissionsTask import CommissionsTask, QuickAssistTask
 from src.tasks.BaseCombatTask import BaseCombatTask
@@ -113,8 +114,10 @@ class Auto70jjbTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     #         return True
 
     def find_track_point(self, x1, y1, x2, y2) -> bool:
-        box = self.box_of_screen_scaled(2560, 1440, 2560 * x1, 1440 * y1, 2560 * x2, 1440 * y2, name="find_track_point",
-                                        hcenter=True)
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT,
+                                        REF_WIDTH * x1, REF_HEIGHT * y1,
+                                        REF_WIDTH * x2, REF_HEIGHT * y2,
+                                        name="find_track_point", hcenter=True)
         return super().find_track_point(threshold=0.7, box=box)
     
     def _release_all_move_keys(self):

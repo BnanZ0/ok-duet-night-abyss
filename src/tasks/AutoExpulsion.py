@@ -39,7 +39,8 @@ class AutoExpulsion(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             "options": ["开局重置角色位置", "开局向前走"],
         }
 
-        self.action_timeout = 10
+        # 云游戏实拍帧糊、模板分低，识别弹窗会有假阴性，给足重试轮次
+        self.action_timeout = 20
         
         self.skill_tick = self.create_skill_ticker()
         self.random_walk_tick = self.create_random_walk_ticker()

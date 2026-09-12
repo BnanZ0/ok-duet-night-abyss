@@ -37,21 +37,19 @@ class AutoMazeTask(BaseDNATask, TriggerTask):
         """扫描所有拼图位置"""
         found_any = False
         if self.find_one("mech_retry",
-                         box=self.box_of_screen_scaled(2560, 1440, 2287, 1006, 2414, 1132, name="mech_retry",
-                                                       hcenter=True), threshold=0.65):
+                         box=self.screen_box('MAZE_MECH_RETRY_A'), threshold=0.65):
             self.sleep_random(0.5, random_range=(1, 1.2))
             self.send_key("f", after_sleep=1)
             self._unlocked = True
             return
         if not self.find_one("mech_retry",
-                             box=self.box_of_screen_scaled(3840, 2160, 3367, 1632, 3548, 1811, name="mech_retry",
-                                                           hcenter=True), threshold=0.65):
+                             box=self.screen_box('MAZE_MECH_RETRY_B'), threshold=0.65):
             return
         
         self.rel_move_if_in_win()
 
         # 统一的检测区域（放大 5%）
-        puzzle_box = self.box_of_screen_scaled(3840, 2160, 2336, 604, 3307, 1578, name="puzzle_detection", hcenter=True)
+        puzzle_box = self.screen_box('MAZE_PUZZLE')
         box = self.find_best_match_in_box(puzzle_box,
                                           ["mech_maze_1", "mech_maze_2", "mech_maze_3", "mech_maze_4", "mech_maze_5",
                                            "mech_maze_6", "mech_maze_7", "mech_maze_8"], 0.7)

@@ -1,5 +1,7 @@
 import time
 from typing import Protocol, Callable, Union
+import json
+import os
 import numpy as np
 import cv2
 import winsound
@@ -15,6 +17,8 @@ from functools import cached_property
 from ok import BaseTask, Box, Logger, color_range_to_bound, og
 from ok.device.intercation import GenshinInteraction, PyDirectInteraction
 from ok.util.process import run_in_new_thread
+
+from src.dna_ui.Defs import DISCRIMINATORS, REF_WIDTH, REF_HEIGHT, SCREEN_BOX
 
 logger = Logger.get_logger(__name__)
 f_black_color = {
@@ -147,31 +151,23 @@ class BaseDNATask(BaseTask):
             oldest_msg = self.onetime_queue.popleft()
             self.onetime_seen.discard(oldest_msg)
 
+    def screen_box(self, name):
+        """取 SCREEN_BOX 里集中定义的搜索框，按它自己的原始基准和 hcenter 缩放到实际分辨率。"""
+        w, h, x0, y0, x1, y1, hcenter = getattr(SCREEN_BOX, name)
+        return self.box_of_screen_scaled(w, h, x0, y0, x1, y1,
+                                         name=name, hcenter=hcenter)
+
     def in_team(self, frame=None) -> bool:
+        """是否在**局内**（回答"我在不在游戏里"，不是"我能不能打架"）。
+
+        盖着 HUD 的界面（ESC 菜单、设置页）也算局内，因为上面的 lv_text 还在。
+        """
         _frame = self.frame if frame is None else frame
         if self.find_one('lv_text', frame=_frame, threshold=0.8):
             return True
-        # start_time = time.perf_counter()
-        mat = self.get_feature_by_name("ultimate_key_icon").mat
-        mat2 = self.box_of_screen_scaled(
-            3840,
-            2160,
-            3361,
-            1954,
-            width_original=211,
-            height_original=89,
-            name="ultimate_key_icon",
-            hcenter=True,
-        ).crop_frame(_frame)
-        max_area1 = invert_max_area_only(mat)[2]
-        max_area2 = invert_max_area_only(mat2)[2]
-        result = False
-        if max_area1 > 0:
-            if abs(max_area1 - max_area2) / max_area1 < 0.15:
-                result = True
-        # elapsed = time.perf_counter() - start_time
-        # logger.debug(f"in_team check took {elapsed:.4f} seconds.")
-        return result
+        # 补判：右下角「Q」终结技键图标（局内才有，开始界面同位置是委托报酬面板）
+        return self.find_one('ultimate_key_icon', frame=_frame, threshold=0.9,
+                             box=self.screen_box('ULTIMATE_KEY_ICON')) is not None
 
     def in_team_and_world(self):
         return self.in_team()
@@ -193,49 +189,60 @@ class BaseDNATask(BaseTask):
         if esc:
             self.back(after_sleep=1.5)
 
-    def find_start_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
+    # ------------------------------------------------------------------
+    # 界面判据 / 坐标点击（唯一出处：src/ui/Defs.py）
+    # ------------------------------------------------------------------
+    def find_ui(self, label: str, threshold: float = 0, box: Box | None = None,
+                template=None) -> Box | None:
+        """找一个界面判据元素，搜索框取自 Defs.DISCRIMINATORS（调用方不需要知道坐标）。"""
+        if box is None:
+            spec = DISCRIMINATORS.get(label)
+            if spec is not None:
+                search = spec[0]
+                box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT,
+                                                search[0], search[1], search[2], search[3],
+                                                name=label, hcenter=True)
         if isinstance(box, Box):
             self.draw_boxes(box.name, box, "blue")
-        return self.find_one('start_icon', threshold=threshold, box=box, template=template)
+        return self.find_one(label, threshold=threshold, box=box, template=template)
 
-    def find_cancel_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        return self.find_one('cancel_icon', threshold=threshold, box=box, template=template)
-    
-    def find_space_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        return self.find_one('space_icon', threshold=threshold, box=box, template=template)
-    
-    def find_esc_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        return self.find_one('esc_icon', threshold=threshold, box=box, template=template)
+    def click_ui_coord(self, coord, name: str = None, after_sleep: float = 0, down_time: float = 0.02,
+                       use_safe_move: bool = False, safe_move_box=None) -> None:
+        """按 1600x900 基准坐标点一下（坐标出自 `src.dna_ui.Defs.COORD`）。"""
+        x, y = coord
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, x, y, x + 1, y + 1,
+                                        name=name or ('ui_%d_%d' % (x, y)), hcenter=True,
+                                        vcenter=True)
+        self.click_box_random(box, after_sleep=after_sleep, down_time=down_time,
+                              use_safe_move=use_safe_move, safe_move_box=safe_move_box)
 
-    def find_retry_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        return self.find_one('retry_icon', threshold=threshold, box=box, template=template)
+    def click_ui_area(self, area, name: str = None, after_sleep: float = 0.25,
+                      use_safe_move: bool = False, safe_move_box=None) -> None:
+        """按 1600x900 基准的 (x0, y0, x1, y1) 区域框内随机点一下（坐标出自 `src.dna_ui.Defs.COORD`）。
 
-    def find_quit_btn(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        return self.find_one('quit_icon', threshold=threshold, box=box, template=template)
+        给"不能只点一个点、但也没有可裁图形"的控件用，框内随机取点保留下抖动。
+        """
+        x0, y0, x1, y1 = area
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, x0, y0, x1, y1,
+                                        name=name or ('ui_area_%d_%d' % (x0, y0)), hcenter=True)
+        self.draw_boxes(box.name, box, 'green')
+        self.click_box_random(box, after_sleep=after_sleep,
+                              use_safe_move=use_safe_move, safe_move_box=safe_move_box)
 
-    def find_drop_item(self, rates=2000, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        else:
-            box = self.box_of_screen(0.381, 0.406, 0.713, 0.483, name="drop_rate_item", hcenter=True)
-        return self.find_one(f'drop_item_{str(rates)}', threshold=threshold, box=box, template=template)
+    def _click_detected(self, box, name: str = None, after_sleep: float = 0.25,
+                        use_safe_move: bool = False, safe_move_box=None) -> bool:
+        """点检测到的那个 box（框内随机点一下）；box 为 None 时返回 False。"""
+        if box is None:
+            return False
+        if name:
+            box.name = name
+        self.click_box_random(box, after_sleep=after_sleep,
+                              use_safe_move=use_safe_move, safe_move_box=safe_move_box)
+        return True
 
-    def find_not_use_letter_icon(self, threshold: float = 0, box: Box | None = None, template=None) -> Box | None:
-        if isinstance(box, Box):
-            self.draw_boxes(box.name, box, "blue")
-        else:
-            box = self.box_of_screen(0.4552, 0.3954, 0.4927, 0.4948, name="not_use_letter", hcenter=True)
-        return self.find_one('not_use_letter', threshold=threshold, box=box, template=template)
+    # 原 find_cancel_btn / find_space_btn / find_esc_btn / find_retry_btn /
+    # find_quit_btn / find_drop_item / find_not_use_letter_icon 已删除：
+    # 它们对应的 label 在新版 UI 里不存在，或被界面判据取代。
 
     def safe_get(self, key, default=None):
         if hasattr(self, key):
@@ -333,7 +340,7 @@ class BaseDNATask(BaseTask):
                          mask_function=None, filter_track_color=False) -> Box | None:
         frame = None
         if box is None:
-            box = self.box_of_screen_scaled(2560, 1440, 454, 265, 2110, 1094, name="find_track_point", hcenter=True)
+            box = self.screen_box('FIND_TRACK_POINT')
         # if isinstance(box, Box):
         #     self.draw_boxes(box.name, box, "blue")
         if filter_track_color:
