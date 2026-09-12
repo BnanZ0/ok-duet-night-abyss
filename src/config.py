@@ -193,6 +193,12 @@ config = {
         "default_threshold": 0.8,  # 默认threshold
         "feature_processor": process_feature,
     },
+    "template_tab": {
+        # 默认是否生成标签枚举
+        "generate_label_enum": True,
+        # 默认标签枚举的相对路径
+        "label_enum_relative_path": "src/Labels",
+    },
     "version": version,  # 版本
     "my_app": [
         "src.globals",
