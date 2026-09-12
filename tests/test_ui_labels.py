@@ -5,6 +5,8 @@ from src.config import config
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.tasks.CommissionsTask import CommissionsTask
+from src.tasks.config.CommissionConfig import LETTER_HANDLE_AUTO_SELECT_FIRST
+from src.dna_ui.Defs import COORD
 
 IMAGES = 'tests/images/'
 
@@ -130,6 +132,37 @@ class TestUiLabels(TaskTestCase):
     def test_in_team_not_on_result(self):
         for shot in ('result_expel.png', 'result_explore.png'):
             self._check(shot, self.task.in_team, expected=False)
+
+    # ---- 自动选择密函：走的是不依赖检测的固定区域 + 固定坐标 ----
+
+    def test_choose_letter_auto_select_clicks_slot_once(self):
+        """「自动选择第一个」分支必须真的点到 ⊘ 槽和确认按钮。
+
+        这个分支平时跑不到（默认配置是「直接开始」），踩过坑：调用了一个已被删除的
+        点击方法，报 AttributeError 却一直没被任何测试发现。
+        """
+        # 先钉死"被调用的方法真的存在"——上面那种坑就是漏了这一层
+        for method in ('click_ui_area', 'click_ui_coord', 'click_box_random', 'screen_box'):
+            self.assertTrue(callable(getattr(self.task, method, None)),
+                            'CommissionsTask 缺少 %s' % method)
+        task = self.task
+        original = (type(task).commission_config, task.click_ui_area, task.click_ui_coord,
+                    task.find_letter_interface)
+        clicks = []
+        type(task).commission_config = {'自动处理密函': LETTER_HANDLE_AUTO_SELECT_FIRST}
+        task.mission_status = None
+        task.click_ui_area = lambda area, **kw: clicks.append(('area', area))
+        task.click_ui_coord = lambda coord, **kw: clicks.append(('coord', coord))
+        task.find_letter_interface = lambda *a, **kw: len(clicks) < 2
+        try:
+            task.choose_letter(timeout=2)
+        finally:
+            (type(task).commission_config, task.click_ui_area, task.click_ui_coord,
+             task.find_letter_interface) = original
+        self.assertEqual([c[0] for c in clicks], ['area', 'coord'],
+                         '应点一次 ⊘ 槽、再点一次确认，实际: %s' % (clicks,))
+        self.assertEqual(clicks[0][1], COORD.LETTER_NOT_USE_SAFE)
+        self.assertEqual(clicks[1][1], COORD.LETTER_CONFIRM, '局外布局应点局外确认坐标')
 
     # ---- 对照：不该命中的场景 ----
 

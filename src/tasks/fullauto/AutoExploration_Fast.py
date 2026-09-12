@@ -1,7 +1,7 @@
 from ok import Logger, TaskDisabledException
 from qfluentwidgets import FluentIcon
 
-from src.ui.Defs import REF_WIDTH, REF_HEIGHT
+from src.dna_ui.Defs import REF_WIDTH, REF_HEIGHT
 from src.tasks.AutoExploration import AutoExploration
 from src.tasks.CommissionsTask import CommissionsTask, QuickAssistTask
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask

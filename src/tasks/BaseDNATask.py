@@ -18,7 +18,7 @@ from ok import BaseTask, Box, Logger, color_range_to_bound, og
 from ok.device.intercation import GenshinInteraction, PyDirectInteraction
 from ok.util.process import run_in_new_thread
 
-from src.ui.Defs import DISCRIMINATORS, REF_WIDTH, REF_HEIGHT, SCREEN_BOX
+from src.dna_ui.Defs import DISCRIMINATORS, REF_WIDTH, REF_HEIGHT, SCREEN_BOX
 
 logger = Logger.get_logger(__name__)
 f_black_color = {
@@ -151,9 +151,9 @@ class BaseDNATask(BaseTask):
             oldest_msg = self.onetime_queue.popleft()
             self.onetime_seen.discard(oldest_msg)
 
-    def screen_box(self, name, hcenter=True):
-        """取 SCREEN_BOX 里集中定义的搜索框，按它自己的原始基准缩放到实际分辨率。"""
-        w, h, x0, y0, x1, y1 = getattr(SCREEN_BOX, name)
+    def screen_box(self, name):
+        """取 SCREEN_BOX 里集中定义的搜索框，按它自己的原始基准和 hcenter 缩放到实际分辨率。"""
+        w, h, x0, y0, x1, y1, hcenter = getattr(SCREEN_BOX, name)
         return self.box_of_screen_scaled(w, h, x0, y0, x1, y1,
                                          name=name, hcenter=hcenter)
 
@@ -204,12 +204,25 @@ class BaseDNATask(BaseTask):
 
     def click_ui_coord(self, coord, name: str = None, after_sleep: float = 0, down_time: float = 0.02,
                        use_safe_move: bool = False, safe_move_box=None) -> None:
-        """按 1600x900 基准坐标点一下（坐标出自 `src.ui.Defs.COORD`）。"""
+        """按 1600x900 基准坐标点一下（坐标出自 `src.dna_ui.Defs.COORD`）。"""
         x, y = coord
         box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, x, y, x + 1, y + 1,
                                         name=name or ('ui_%d_%d' % (x, y)), hcenter=True,
                                         vcenter=True)
         self.click_box_random(box, after_sleep=after_sleep, down_time=down_time,
+                              use_safe_move=use_safe_move, safe_move_box=safe_move_box)
+
+    def click_ui_area(self, area, name: str = None, after_sleep: float = 0.25,
+                      use_safe_move: bool = False, safe_move_box=None) -> None:
+        """按 1600x900 基准的 (x0, y0, x1, y1) 区域框内随机点一下（坐标出自 `src.dna_ui.Defs.COORD`）。
+
+        给"不能只点一个点、但也没有可裁图形"的控件用，框内随机取点保留下抖动。
+        """
+        x0, y0, x1, y1 = area
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, x0, y0, x1, y1,
+                                        name=name or ('ui_area_%d_%d' % (x0, y0)), hcenter=True)
+        self.draw_boxes(box.name, box, 'green')
+        self.click_box_random(box, after_sleep=after_sleep,
                               use_safe_move=use_safe_move, safe_move_box=safe_move_box)
 
     def _click_detected(self, box, name: str = None, after_sleep: float = 0.25,

@@ -7,7 +7,7 @@ from functools import cached_property
 
 from ok import TaskDisabledException
 from src.tasks.BaseDNATask import BaseDNATask, isolate_white_text_to_black, color_filter
-from src.ui.Defs import Ui, COORD
+from src.dna_ui.Defs import Ui, COORD
 from src.tasks.config.CommissionConfig import (
     CommissionConfig,
     LETTER_HANDLE_AUTO_SELECT_FIRST,
