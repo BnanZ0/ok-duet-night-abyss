@@ -1,14 +1,34 @@
 # 界面判据模板匹配测试
+import re
 import unittest
 
 from src.config import config
 from ok.test.TaskTestCase import TaskTestCase
 
-from src.tasks.CommissionsTask import CommissionsTask
+from src.tasks.CommissionsTask import CommissionsTask, normalize_ocr_scale
 from src.tasks.config.CommissionConfig import LETTER_HANDLE_AUTO_SELECT_FIRST
-from src.dna_ui.Defs import COORD, DISCRIMINATORS
+from src.dna_ui.Defs import COORD, DISCRIMINATORS, REWARD_COUNT_BOX, REWARD_SELECTED_BOX
 
 IMAGES = 'tests/images/'
+
+
+def read_reward_counts(case, image):
+    """用真实 OCR 读三个奖励的持有数（三个固定区域各跑一次，正则只匹配数字，取第一个）。
+
+    返回每个区域识别到的数字。OCR 在紧框里会把同一个数字重复检测成多个框，
+    也可能把「持有数：」和数字切成两段，所以两种形态都按"取第一个数字"来读。
+    """
+    case.set_image(IMAGES + image)
+    task = case.task
+    reward_pattern = re.compile(r'[0-9]+')
+    scale = max(1.0, 2.0 * 1600 / task.width)
+    counts = []
+    for index, area in enumerate(REWARD_COUNT_BOX, start=1):
+        box = task.box_of_screen_scaled(1600, 900, *area, name='reward_count_%d' % index)
+        found = task.ocr(box=box, match=reward_pattern,
+                         frame_processor=lambda img: normalize_ocr_scale(img, scale))
+        counts.append(int(reward_pattern.search(found[0].name).group()) if found else None)
+    return counts
 
 
 class TestUiLabels(TaskTestCase):
@@ -90,6 +110,95 @@ class TestUiLabels(TaskTestCase):
 
     def test_letter_reward(self):
         self._check('letter_reward.png', self.task.find_letter_reward_btn)
+
+    # ---- 密函奖励：选中指示器 ✔ 只在被选中的那个奖励区域里 ----
+
+    def test_reward_selected_only_in_selected_slot(self):
+        """`letter_reward.png` 里选中的是第 1 个奖励 -> 只有第 1 个搜索框该命中。
+
+        ✔ 的阈值余量（离线实测）：选中的框 1.0000，另外两个框 0.1728 / 0.1901（阈值 0.9）。
+        """
+        self.set_image(IMAGES + 'letter_reward.png')
+        first = self.task.find_reward_selected(1)
+        self.assertIsNotNone(first, '第 1 个奖励搜索框应命中 reward_selected')
+        box = self.task.box_of_screen_scaled(1600, 900, *REWARD_SELECTED_BOX[0])
+        self.assertTrue(box.x <= first.x <= box.x + box.width
+                        and box.y <= first.y <= box.y + box.height,
+                        '命中位置 %s 不在第 1 个搜索框 %s 内' % ((first.x, first.y), REWARD_SELECTED_BOX[0]))
+        for index in (2, 3):
+            self.assertIsNone(self.task.find_reward_selected(index),
+                              '未选中的第 %d 个奖励不该命中 ✔' % index)
+
+    def test_reward_selected_boxes_are_disjoint(self):
+        """三个奖励搜索框是三个独立区域，✔ 出现在哪个框里就代表选中了哪个。"""
+        for left, right in ((0, 1), (0, 2), (1, 2)):
+            gap = REWARD_SELECTED_BOX[right][0] - REWARD_SELECTED_BOX[left][2]
+            self.assertGreater(gap, 0, '第 %d 个和第 %d 个搜索框重叠（间隔 %d）'
+                               % (left + 1, right + 1, gap))
+
+    def test_reward_selected_not_on_other_screens(self):
+        """奖励选中指示器只存在于密函奖励界面：其余 25 张截图上三个搜索框都必须不命中。
+
+        余量（离线实测）：非奖励截图上最高只有 0.4188（start_screen_letter）。
+        """
+        not_reward = (
+            'start_screen_expel.png', 'start_screen_letter.png', 'start_screen_defence.png',
+            'start_screen_hedge.png', 'start_screen_survey.png', 'start_screen_explore_attr.png',
+            'result_explore.png', 'result_defence.png', 'result_expel.png',
+            'result_commission.png', 'result_letter.png',
+            'manual_select_from_start.png', 'manual_select_after_result.png',
+            'manual_select_after_comm.png', 'manual_select_next_round.png',
+            'letter_select_from_start.png', 'letter_select_from_ingame.png',
+            'letter_select_after_result.png',
+            'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
+            'hud_explore_round1.png',
+        )
+        self.assertEqual(len(not_reward), 25)
+        for shot in not_reward:
+            self.set_image(IMAGES + shot)
+            for index in (1, 2, 3):
+                self.assertIsNone(self.task.find_reward_selected(index),
+                                  '%s 的第 %d 个奖励搜索框不该命中 ✔' % (shot, index))
+
+    # ---- 密函奖励：三个 OCR 区域各出一个数字 ----
+
+    def test_reward_count_from_fixture(self):
+        """三个 OCR 区域各跑一次，每个区域都能读到一个数字，且是画面上的持有数。
+
+        只认数字、取第一个：检测器会把「持有数：」和数字切成两段，也会把同一个数字
+        重复检测成两个重叠的框（实机实测区域1 回 ['持有数：8', '8']），要求"恰好 1 个"
+        或"多个必须一致"都会误报。
+        """
+        counts = read_reward_counts(self, 'letter_reward.png')
+        self.assertEqual(counts, [22, 36440, 36440])
+
+    def test_reward_count_boxes_are_disjoint(self):
+        """三个 OCR 区域是三个独立区域，各自只圈住一张卡的「持有数：N」。"""
+        for left, right in ((0, 1), (0, 2), (1, 2)):
+            gap = REWARD_COUNT_BOX[right][0] - REWARD_COUNT_BOX[left][2]
+            self.assertGreater(gap, 0, '第 %d 个和第 %d 个 OCR 区域重叠（间隔 %d）'
+                               % (left + 1, right + 1, gap))
+
+    def test_reward_count_not_on_other_screens(self):
+        """三个 OCR 区域只在密函奖励界面有文字，其它 25 张截图上都不该读到数字。"""
+        not_reward = (
+            'start_screen_expel.png', 'start_screen_letter.png', 'start_screen_defence.png',
+            'start_screen_hedge.png', 'start_screen_survey.png', 'start_screen_explore_attr.png',
+            'result_explore.png', 'result_defence.png', 'result_expel.png',
+            'result_commission.png', 'result_letter.png',
+            'manual_select_from_start.png', 'manual_select_after_result.png',
+            'manual_select_after_comm.png', 'manual_select_next_round.png',
+            'letter_select_from_start.png', 'letter_select_from_ingame.png',
+            'letter_select_after_result.png',
+            'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
+            'hud_explore_round1.png',
+        )
+        for shot in not_reward:
+            counts = read_reward_counts(self, shot)
+            self.assertEqual(counts, [None, None, None],
+                             '%s 的 OCR 区域不该读到数字，实际 %s' % (shot, counts))
 
     # ---- ESC 菜单 ----
 
