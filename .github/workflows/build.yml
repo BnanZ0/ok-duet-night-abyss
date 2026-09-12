@@ -44,9 +44,14 @@ jobs:
           set PYTHONLEGACYWINDOWSSTDIO=utf-8
           echo PYTHONIOENCODING=utf-8 >> $GITHUB_ENV
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: uv pip install --system -r requirements.txt
 
       - name: inline_ok_requirements #把ok-script加入源码, 从requirements.txt中删除以提高升级更新速度
         run: |
