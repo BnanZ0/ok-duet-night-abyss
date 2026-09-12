@@ -330,26 +330,27 @@ class CommissionsTask(BaseDNATask):
 
     def choose_target_letter_reward(self):
         reward_pattern = re.compile(r'[:：]\s*([0-9]+)')
-        def get_rewards():
-            box = self.box_of_screen(0.328, 0.643, 0.678, 0.672, hcenter=True, name="letter_reward")
-            return self.ocr(box=box, match=reward_pattern)
-        
-        start = time.time()
-        while time.time() - start < 10:
-            rewards = get_rewards()
-            if len(rewards) == 3:
+        # 横向放宽：「持有数：36501」这类 5 位数的识别框宽约 115~120px，
+        # 原来右边卡只到 1084 会把最后一位切掉（实测 36440 读成 3644）
+        reward_box = self.box_of_screen(0.319, 0.643, 0.708, 0.672, hcenter=True, name="letter_reward")
+        rewards = None
+
+        # 进这个界面时卡片还在做淡入/高亮动画，帧不稳定；等动画走完再开始识别。
+        # 一轮识别 3 次，3 次都齐才算稳；3 轮都稳不下来就是真有问题，直接抛异常。
+        self.sleep(1)
+        for attempt in range(1, 4):
+            for _ in range(3):
+                found = self.ocr(box=reward_box, match=reward_pattern)
+                if found and len(found) == 3:
+                    rewards = found
+                    break
+                self.sleep(0.3)
+            if rewards is not None:
                 break
-            self.sleep(0.1)
-        else:
-            self.log_info("超时：未识别到3个奖励选项，使用默认奖励")
-            return
+            self.log_info(f"第 {attempt} 轮未识别到 3 个奖励选项，1 秒后重试")
 
-        self.sleep(0.3)
-        rewards = get_rewards()
-
-        if len(rewards) != 3:
-            self.log_info(f"异常：稳定后识别数量不符 (识别到 {len(rewards)} 个)，使用默认奖励")
-            return
+        if rewards is None:
+            raise Exception("密函奖励界面识别不到 3 个奖励选项")
 
         rewards.sort(key=lambda reward: reward.x)
 
@@ -357,8 +358,7 @@ class CommissionsTask(BaseDNATask):
         for idx, reward in enumerate(rewards):
             match = reward_pattern.search(reward.name)
             if not match:
-                self.log_info(f"第 {idx + 1} 个奖励数量识别失败，使用默认奖励")
-                return
+                raise Exception(f"第 {idx + 1} 个奖励数量识别失败: {reward.name!r}")
             count = int(match.group(1))
             parsed_items.append({
                 'index': idx + 1,
