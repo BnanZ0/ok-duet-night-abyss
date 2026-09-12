@@ -7,7 +7,8 @@ from functools import cached_property
 
 from ok import TaskDisabledException
 from src.tasks.BaseDNATask import BaseDNATask, isolate_white_text_to_black, color_filter
-from src.dna_ui.Defs import Ui, COORD
+from src.dna_ui.Defs import (Ui, COORD, REF_WIDTH, REF_HEIGHT,
+                             REWARD_COUNT_BOX, REWARD_SELECTED_BOX)
 from src.tasks.config.CommissionConfig import (
     CommissionConfig,
     LETTER_HANDLE_AUTO_SELECT_FIRST,
@@ -95,6 +96,15 @@ class CommissionsTask(BaseDNATask):
     def find_letter_reward_btn(self, threshold=0):
         """密函奖励弹窗。"""
         return self.find_ui(Ui.LETTER_REWARD_CONFIRM, threshold=threshold)
+
+    def find_reward_selected(self, index, threshold=0.9):
+        """第 index 个奖励是否已选中 —— 在它的底栏区域里找 ✔。
+
+        选中哪个哪个才画 ✔，所以命中就代表"这个奖励选上了"，点一次没选上就再点。
+        """
+        box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, *REWARD_SELECTED_BOX[index - 1],
+                                        name='reward_card_%d' % index)
+        return self.find_one('reward_selected', threshold=threshold, box=box)
 
     def find_esc_menu(self, threshold=0):
         """局内 ESC 菜单（用「设置」齿轮当判据）。"""
@@ -328,72 +338,75 @@ class CommissionsTask(BaseDNATask):
                 raise_if_not_found=True,
             )
 
-    def choose_target_letter_reward(self):
-        reward_pattern = re.compile(r'[:：]\s*([0-9]+)')
-        # 横向放宽：「持有数：36501」这类 5 位数的识别框宽约 115~120px，
-        # 原来右边卡只到 1084 会把最后一位切掉（实测 36440 读成 3644）
-        reward_box = self.box_of_screen(0.319, 0.643, 0.708, 0.672, hcenter=True, name="letter_reward")
-        rewards = None
+    def read_reward_counts(self, attempt=3):
+        """读三个奖励的持有数，返回 [卡1, 卡2, 卡3]。
+
+        三个奖励各有一个固定的 OCR 区域，**各跑一次**，正则只匹配数字（`[0-9]+`），
+        取第一个匹配到的就用。OCR 在紧框里可能把同一个数字重复检测成多个框
+        （实测区域1 会回 ['持有数：8', '8']，两框还重叠），或者把「持有数：」和数字
+        切成两段，所以不要求"恰好 1 个"，也不比较多个数字是否一致。
+
+        每个区域先经 `normalize_ocr_scale` 归一化字号：1600x900 下单数字只有 16px 高，
+        检测器会整个漏掉它（实测只剩「持有数：」）或把它认成别的数字；2K/4K 下本来就够大。
+        """
+        reward_pattern = re.compile(r'[0-9]+')
+        # 1600x900 的字号太小，统一放大到它的 2 倍；高分辨率按比例少放或不放
+        scale = max(1.0, 2.0 * REF_WIDTH / self.width)
+
+        def read_once():
+            counts = []
+            for index, area in enumerate(REWARD_COUNT_BOX, start=1):
+                box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, *area,
+                                                name='reward_count_%d' % index)
+                self.draw_boxes(box.name, box, 'blue')
+                found = self.ocr(box=box, match=reward_pattern,
+                                 frame_processor=lambda img: normalize_ocr_scale(img, scale))
+                if not found:
+                    raise Exception("第 %d 个奖励持有数识别失败，这个区域一个数字都没识别到" % index)
+                counts.append(int(reward_pattern.search(found[0].name).group()))
+            return counts
 
         # 进这个界面时卡片还在做淡入/高亮动画，帧不稳定；等动画走完再开始识别。
-        # 一轮识别 3 次，3 次都齐才算稳；3 轮都稳不下来就是真有问题，直接抛异常。
         self.sleep(1)
-        for attempt in range(1, 4):
-            for _ in range(3):
-                found = self.ocr(box=reward_box, match=reward_pattern)
-                if found and len(found) == 3:
-                    rewards = found
-                    break
-                self.sleep(0.3)
-            if rewards is not None:
-                break
-            self.log_info(f"第 {attempt} 轮未识别到 3 个奖励选项，1 秒后重试")
+        for attempt_index in range(1, attempt + 1):
+            try:
+                return read_once()
+            except Exception as e:
+                if attempt_index == attempt:
+                    raise
+                self.log_info(f"第 {attempt_index} 轮识别奖励持有数失败({e})，1 秒后重试")
+                self.sleep(1)
 
-        if rewards is None:
-            raise Exception("密函奖励界面识别不到 3 个奖励选项")
-
-        rewards.sort(key=lambda reward: reward.x)
-
-        parsed_items = []
-        for idx, reward in enumerate(rewards):
-            match = reward_pattern.search(reward.name)
-            if not match:
-                raise Exception(f"第 {idx + 1} 个奖励数量识别失败: {reward.name!r}")
-            count = int(match.group(1))
-            parsed_items.append({
-                'index': idx + 1,
-                'count': count,
-                'reward_obj': reward,
-                'name': reward.name
-            })
-
+    def choose_target_letter_reward(self):
+        counts = self.read_reward_counts()
         strategy = self.commission_config.get("密函奖励偏好")
-        target_item = None
-
-        self.log_info(f"当前识别到的奖励持有数: {[item['count'] for item in parsed_items]}")
+        self.log_info(f"当前识别到的奖励持有数: {counts}")
 
         if strategy == LETTER_REWARD_COUNT_ZERO:
-            for item in parsed_items:
-                if item['count'] == 0:
-                    target_item = item
-                    break
-            if not target_item:
+            index = next((i for i, count in enumerate(counts, start=1) if count == 0), None)
+            if index is None:
                 self.log_info("未识别到持有数为0的奖励，使用默认奖励")
                 return
-
         elif strategy == LETTER_REWARD_COUNT_MIN:
-            target_item = min(parsed_items, key=lambda x: x['count'])
-
+            index = counts.index(min(counts)) + 1
         elif strategy == LETTER_REWARD_COUNT_MAX:
-            target_item = max(parsed_items, key=lambda x: x['count'])
+            index = counts.index(max(counts)) + 1
+        else:
+            return
 
-        if target_item:
-            self.log_info(f"策略[{strategy}] -> 选择第 {target_item['index']} 个奖励，持有数: {target_item['count']}")
-            # 奖励卡内容是随机的 -> 不建 label，按固定坐标点第 index 张
-            card = (COORD.LETTER_REWARD_CARD_1, COORD.LETTER_REWARD_CARD_2,
-                    COORD.LETTER_REWARD_CARD_3)[target_item['index'] - 1]
-            self.click_ui_coord(card, name="reward_card_%d" % target_item['index'],
-                                down_time=0.02, after_sleep=0.5)
+        self.log_info(f"策略[{strategy}] -> 选择第 {index} 个奖励，持有数: {counts[index - 1]}")
+        # 点奖励区域本身：实测点卡片中间的图案只会弹出物品详情，不会改变选择
+        area = REWARD_COUNT_BOX[index - 1]
+        target_box = self.box_of_screen_scaled(REF_WIDTH, REF_HEIGHT, *area,
+                                               name='letter_reward_%d' % index)
+
+        # 点了不算成功：✔ 得出现在这一张的底栏才算选中，没出现就再点一次
+        self.wait_until(
+            condition=lambda: self.find_reward_selected(index) is not None,
+            post_action=lambda: self.click_box_random(target_box, down_time=0.02, after_sleep=0.3),
+            time_out=10,
+            raise_if_not_found=True,
+        )
 
     def choose_letter_reward(self, timeout=0):
         action_timeout = self.action_timeout if timeout == 0 else timeout
@@ -667,6 +680,19 @@ class QuickAssistTask:
         if self._aim_task:
             self._aim_task.reset()
             self._aim_task.try_disconnect_listener()
+
+def normalize_ocr_scale(cv_image, scale=1.0):
+    """把 OCR 区域放大到固定字号再识别。
+
+    区域坐标按 1600x900 定义，但运行分辨率可能是 1080p / 2K / 4K。实测 1600x900 下
+    单个数字只有 16px 高，检测器会整个漏掉它（只剩「持有数：」）或把它认成别的数字；
+    字号拉到 1600x900 的约 2 倍就全部稳定。所以按当前分辨率算放大倍数：
+    1600x900 放 2 倍，2K 放约 1.1 倍，4K 本来就够大、不放大。
+    """
+    if scale <= 1.0:
+        return cv_image
+    return cv2.resize(cv_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
 
 def ocr_normalize(cv_image):
     cv_image = color_filter(cv_image, round_info_color)

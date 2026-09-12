@@ -112,6 +112,23 @@ class SCREEN_BOX:
     FULL_SCREEN = (2560, 1440, 1, 1, 2559, 1439, True)
 
 
+# 密函奖励的两组区域（1600x900 基准），下标顺序都对应第 1/2/3 个奖励：
+#   REWARD_COUNT_BOX    「持有数：N」的 OCR 区域
+#   REWARD_SELECTED_BOX 「选中指示器 ✔」的搜索区域（判断点击有没有生效）
+# 点击位置不在这里，仍是 COORD.LETTER_REWARD_CARD_*。
+REWARD_COUNT_BOX = (
+    (512, 580, 636, 606),
+    (743, 579, 864, 607),
+    (971, 579, 1096, 606),
+)
+
+REWARD_SELECTED_BOX = (
+    (542, 610, 610, 651),
+    (779, 606, 833, 652),
+    (1005, 607, 1065, 653),
+)
+
+
 class COORD:
     """点击坐标（1600x900 基准）。判据负责"认界面"，这里负责"点哪里"。"""
 
@@ -148,10 +165,9 @@ class COORD:
     LETTER_CONFIRM = (1292, 583)
     LETTER_INGAME_CONFIRM = (1108, 580)
 
-    # ---- 密函奖励（奖励卡内容是随机的 -> 只按固定坐标点，不做 label）----
-    LETTER_REWARD_CARD_1 = (578, 466)
-    LETTER_REWARD_CARD_2 = (807, 466)
-    LETTER_REWARD_CARD_3 = (1037, 466)
+    # ---- 密函奖励 ----
+    # 点奖励区域本身（REWARD_COUNT_BOX）；实测点卡片中间的图案只会弹出物品详情，
+    # 不会改变选择，所以这里不再保留"卡片中心"坐标。
     LETTER_REWARD_CONFIRM = (808, 755)
 
     # ---- ESC 菜单 ----
