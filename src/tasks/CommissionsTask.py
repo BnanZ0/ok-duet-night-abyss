@@ -302,9 +302,9 @@ class CommissionsTask(BaseDNATask):
             drag_box = self.screen_box('LETTER_DRAG_AREA')
 
             if mode == LETTER_HANDLE_AUTO_SELECT_FIRST:
-                # 密函界面的 ⊘ 槽（不是委托手册弹窗那个，两个弹窗都有 ⊘，别混）
+                # 点第 2 格（第一个可选密函）；第 1 格是 ⊘ 不使用，点了等于不用密函
                 self.sleep(0.1)
-                self.click_ui_area(COORD.LETTER_NOT_USE_SAFE, name="letter_not_use_slot",
+                self.click_ui_area(COORD.LETTER_FIRST, name="letter_first_slot",
                                    after_sleep=0.3, use_safe_move=True, safe_move_box=drag_box)
 
             # 确认按钮直接点固定坐标：局内继续轮次是 x1108，其余是 x1292

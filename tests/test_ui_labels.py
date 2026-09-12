@@ -6,7 +6,7 @@ from ok.test.TaskTestCase import TaskTestCase
 
 from src.tasks.CommissionsTask import CommissionsTask
 from src.tasks.config.CommissionConfig import LETTER_HANDLE_AUTO_SELECT_FIRST
-from src.dna_ui.Defs import COORD
+from src.dna_ui.Defs import COORD, DISCRIMINATORS
 
 IMAGES = 'tests/images/'
 
@@ -136,15 +136,20 @@ class TestUiLabels(TaskTestCase):
     # ---- 自动选择密函：走的是不依赖检测的固定区域 + 固定坐标 ----
 
     def test_choose_letter_auto_select_clicks_slot_once(self):
-        """「自动选择第一个」分支必须真的点到 ⊘ 槽和确认按钮。
+        """「自动选择第一个」分支必须真的点到第一个密函格和确认按钮。
 
-        这个分支平时跑不到（默认配置是「直接开始」），踩过坑：调用了一个已被删除的
-        点击方法，报 AttributeError 却一直没被任何测试发现。
+        这个分支平时跑不到（默认配置是「直接开始」），踩过两个坑：
+        调用了一个已被删除的点击方法（AttributeError，无人发现）；
+        以及把点击框写成了 ⊘「不使用」那格的位置，等于主动选择"不用密函"。
         """
-        # 先钉死"被调用的方法真的存在"——上面那种坑就是漏了这一层
+        # 先钉死"被调用的方法真的存在"——第一个坑就是漏了这一层
         for method in ('click_ui_area', 'click_ui_coord', 'click_box_random', 'screen_box'):
             self.assertTrue(callable(getattr(self.task, method, None)),
                             'CommissionsTask 缺少 %s' % method)
+        # 第二个坑：点击框必须在 ⊘ 判据的**右边**，不能压在它身上
+        not_use = DISCRIMINATORS['letter_select_not_use'][0]
+        self.assertGreater(COORD.LETTER_FIRST[0], not_use[2],
+                           'LETTER_FIRST %s 不在 ⊘ 判据 %s 右侧' % (COORD.LETTER_FIRST, not_use))
         task = self.task
         original = (type(task).commission_config, task.click_ui_area, task.click_ui_coord,
                     task.find_letter_interface)
@@ -160,8 +165,8 @@ class TestUiLabels(TaskTestCase):
             (type(task).commission_config, task.click_ui_area, task.click_ui_coord,
              task.find_letter_interface) = original
         self.assertEqual([c[0] for c in clicks], ['area', 'coord'],
-                         '应点一次 ⊘ 槽、再点一次确认，实际: %s' % (clicks,))
-        self.assertEqual(clicks[0][1], COORD.LETTER_NOT_USE_SAFE)
+                         '应点一次密函格、再点一次确认，实际: %s' % (clicks,))
+        self.assertEqual(clicks[0][1], COORD.LETTER_FIRST)
         self.assertEqual(clicks[1][1], COORD.LETTER_CONFIRM, '局外布局应点局外确认坐标')
 
     # ---- 对照：不该命中的场景 ----
