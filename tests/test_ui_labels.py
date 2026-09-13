@@ -67,6 +67,44 @@ class TestUiLabels(TaskTestCase):
     def test_start_btn_letter(self):
         self._check('start_screen_letter.png', self.task.find_start_btn)
 
+    # ---- 开始界面：另一套布局（◯ 图标位置不同，图标模板复用）----
+
+    def test_start_btn2_other_layout(self):
+        """另一套布局只有第 2 个搜索框命中，第 1 个不该命中。
+
+        余量（离线实测）：框2 在新布局 0.9138、旧布局 0.2005；
+        框1 在旧布局 1.0000、新布局 0.1765。两套布局不会互相串味。
+        """
+        self._check('start_screen_other_layout.png', self.task.find_start_btn2)
+        self._check('start_screen_other_layout.png', self.task.find_start_btn, expected=False)
+
+    def test_start_interface_covers_both_layouts(self):
+        """两套布局的 `find_start_interface` 都要命中，旧的 6 张一个不能少。"""
+        for shot in ('start_screen_other_layout.png', 'start_screen_letter.png',
+                     'start_screen_explore_attr.png', 'start_screen_survey.png',
+                     'start_screen_defence.png', 'start_screen_hedge.png',
+                     'start_screen_expel.png'):
+            self._check(shot, self.task.find_start_interface)
+
+    def test_start_btn2_not_on_other_screens(self):
+        """第 2 个搜索框只在另一套开始界面上命中，其余 26 张都不能命中。"""
+        not_start2 = (
+            'start_screen_letter.png', 'start_screen_explore_attr.png', 'start_screen_survey.png',
+            'start_screen_defence.png', 'start_screen_hedge.png', 'start_screen_expel.png',
+            'manual_select_from_start.png', 'manual_select_after_result.png',
+            'manual_select_after_comm.png', 'manual_select_next_round.png',
+            'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'letter_select_from_start.png', 'letter_select_from_ingame.png',
+            'letter_select_after_result.png', 'letter_reward.png',
+            'result_explore.png', 'result_defence.png', 'result_expel.png',
+            'result_commission.png', 'result_letter.png',
+            'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
+            'hud_explore_round1.png',
+        )
+        self.assertEqual(len(not_start2), 26)
+        for shot in not_start2:
+            self._check(shot, self.task.find_start_btn2, expected=False)
+
     # ---- 委托手册弹窗 ----
 
     def test_manual_select_from_start(self):

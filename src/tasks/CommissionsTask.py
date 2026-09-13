@@ -81,6 +81,14 @@ class CommissionsTask(BaseDNATask):
         """开始界面的「开始」按钮（新版只有一个位置，不再分 bottom/big）。"""
         return self.find_ui(Ui.START_SCREEN_START, threshold=threshold, box=box, template=template)
 
+    def find_start_btn2(self, threshold=0):
+        """另一套布局的开始界面「开始」按钮（◯ 图标位置不同，图标模板复用）。"""
+        return self.find_ui(Ui.START_SCREEN_START_2, threshold=threshold)
+
+    def find_start_interface(self, threshold=0):
+        """开始界面 —— 两套布局任意一套命中都算。"""
+        return self.find_start_btn(threshold=threshold) or self.find_start_btn2(threshold=threshold)
+
     def find_manual_select_btn(self, threshold=0):
         """委托手册弹窗（用 ⊘ 不使用当判据）。"""
         return self.find_ui(Ui.MANUAL_SELECT_NOT_USE, threshold=threshold)
@@ -161,7 +169,7 @@ class CommissionsTask(BaseDNATask):
         clicked = False
 
         while time.time() < deadline:
-            if self.find_start_btn():
+            if self.find_start_interface():
                 self.click_ui_coord(COORD.START_SCREEN_BTN, name="start_mission",
                                     after_sleep=0.2, use_safe_move=True, safe_move_box=box)
                 clicked = True
@@ -203,7 +211,7 @@ class CommissionsTask(BaseDNATask):
 
     def give_up_mission(self, timeout=0):
         def is_mission_start_iface():
-            return self.find_start_btn() or self.find_action_dialog_continue() or self.find_esc_menu()
+            return self.find_start_interface() or self.find_action_dialog_continue() or self.find_esc_menu()
 
         action_timeout = self.action_timeout if timeout == 0 else timeout
 
@@ -564,8 +572,8 @@ class CommissionsTask(BaseDNATask):
             return self.get_return_status()
 
         # 优先级 3：开始 / 再次进行 / 继续 / 放弃
-        # 「再次进行」只在结算界面出现，那里 find_start_btn() 不命中，必须显式带上
-        if self.find_start_btn() or self.find_result_again_btn():
+        # 「再次进行」只在结算界面出现，那里开始界面判据不命中，必须显式带上
+        if self.find_start_interface() or self.find_result_again_btn():
             self.log_info("处理任务界面: 开始任务")
             self.start_mission()
             self.mission_status = Mission.START
