@@ -78,6 +78,14 @@ STAGE_MIN_CONFIDENCE = 0.9
 # 新关卡第 1 层：判据刚出现时角色还在落地/过场收尾，这时候按走位键会被吃掉前面一段
 # （表现就是"走位变短了、走不到机关"），所以等关卡加载完再稳这么久才开始走位。
 FIRST_LAYER_SETTLE = 1
+# 切层之后：角色可能还在攻击/受击后摇里，这时候按 W 会被吃掉（表现就是"向前走被打断"），
+# 先等这么久再执行「挂机模式」的移动/复位。
+LAYER_SWITCH_SETTLE = 1.5
+# 切层之后等目标栏变红（新一层真的开打了）的上限：关号文字是**先变**的，菱形要等切层动画
+# 走完才变红 —— 文字一变就往前走的话，那几秒的移动会被切层动画吃掉（实机观察到两层都是这样）。
+# 等满上限还不红（加载慢、掉线，或者结算页被漏读后停在新关卡的"开启第 X 试炼"阶段）只记一条
+# 警告，照常往下走；真的没进战斗由 NO_COMBAT_TIME_OUT 那条兜底重开。
+STAGE_RED_TIME_OUT = 15
 
 
 class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -398,7 +406,12 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.restart_in_mission()
                 return False
             if self.update_stage_text(self.read_stage_text()):
-                self.log_info('检测到切层，按「挂机模式」处理角色位置')
+                self.log_info('检测到切层，等目标栏变红（新一层真的开打）再处理角色位置')
+                if not self.wait_until(self.is_in_combat, time_out=STAGE_RED_TIME_OUT,
+                                       raise_if_not_found=False):
+                    self.log_warning(f'切层后等了 {STAGE_RED_TIME_OUT} 秒目标栏还没变红，'
+                                     f'照常处理角色位置')
+                self.sleep(LAYER_SWITCH_SETTLE)
                 self.apply_afk_mode()
                 self.reset_stage_detector()
             self.skill_tick()
