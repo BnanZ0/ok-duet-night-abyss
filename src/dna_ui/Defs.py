@@ -197,6 +197,8 @@ class COORD:
     THEATRE_RESULT_WIN = (1382, 843)          # 结算页「前往」的黄色圆圈（下一层）
     THEATRE_RESULT_RETRY = (1069, 843)        # 结算页「再次挑战」的环形箭头
     THEATRE_ESC_RETRY = (1326, 816)           # 局内菜单「重新开始」（和旧菜单第 3 个按钮同位置）
+    # 「是否重新开始战斗」二次确认弹窗的「确定」：和「复位角色」的二次确认是同一个按钮位置
+    THEATRE_RESTART_CONFIRM = (962, 506)
 
     # ---- 月卡（按用户要求沿用旧坐标，不重构）----
     MONTHLY_CARD_CLOSE = (800, 801)

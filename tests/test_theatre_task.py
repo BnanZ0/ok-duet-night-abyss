@@ -12,7 +12,7 @@ import src.tasks.fullauto.AutoTheatreTask as theatre_module
 from src.tasks.fullauto.AutoTheatreTask import (
     AutoTheatreTask, ESC_RETRY, INTERACT_PROMPT, OBJECTIVE_PANEL, OBJECTIVE_PANEL_FIGHT,
     OBJECTIVE_RED, OBJECTIVE_RED_THRESHOLD, RESULT_FAIL, RESULT_RETRY, RESULT_WIN,
-    START_BTN, START_CONFIRM, WALK_HOLD_KEYS, WALK_RELEASE_KEYS, WALK_SCHEDULE,
+    RESTART_CONFIRM, START_BTN, START_CONFIRM, WALK_HOLD_KEYS, WALK_RELEASE_KEYS, WALK_SCHEDULE,
 )
 
 IMAGES = 'tests/images/'
@@ -143,6 +143,56 @@ class TestTheatreTask(TaskTestCase):
         for shot in ('theatre_start.png', 'theatre_fighting.png', 'theatre_result_win.png',
                      'theatre_result_fail.png', 'start_screen_3.png'):
             self._check(shot, lambda: self.task.find_one(ESC_RETRY), expected=False)
+
+    def test_restart_confirm_only_in_the_dialog(self):
+        """「重新开始」的二次确认只在弹窗截图上命中，菜单/战斗/结算/阵容都不命中。"""
+        self._check('theatre_restart_confirm.png', lambda: self.task.find_one(RESTART_CONFIRM))
+        for shot in ('theatre_esc_menu.png', 'theatre_fighting.png', 'theatre_start.png',
+                     'theatre_result_win.png', 'theatre_result_fail.png', 'start_screen_3.png'):
+            self._check(shot, lambda: self.task.find_one(RESTART_CONFIRM), expected=False)
+
+    def test_restart_clicks_restart_then_confirm(self):
+        """走位失败重来：点「重新开始」-> 点二次确认的「确定」，两个点击都要真的发出去。
+
+        踩过的坑：原来以为「重新开始」没有二次确认，点一下就往下走 —— 弹窗会一直挂着，
+        后面的判据全被它盖住。云游戏会丢点击，所以两个都是"点到出结果为止"。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('find_one', 'click_ui_coord', 'send_key', 'wait_mission_loaded',
+                     'find_objective_panel', 'log_info')}
+        state = {'dialog': False}
+        clicks = []
+        try:
+            def fake_find_one(name, *args, **kwargs):
+                if name == ESC_RETRY:
+                    return 'retry' if not state['dialog'] else None
+                if name == RESTART_CONFIRM:
+                    return 'ok' if state['dialog'] else None
+                return None
+
+            def fake_click(coord, **kwargs):
+                clicks.append(coord)
+                if coord == COORD.THEATRE_ESC_RETRY:
+                    state['dialog'] = True
+                elif coord == COORD.THEATRE_RESTART_CONFIRM:
+                    state['dialog'] = False
+
+            task.find_one = fake_find_one
+            task.click_ui_coord = fake_click
+            task.send_key = lambda *a, **kw: None
+            task.wait_mission_loaded = lambda *a, **kw: None
+            task.find_objective_panel = lambda: None
+            task.log_info = lambda *a, **kw: None
+
+            task.restart_in_mission(time_out=5, load_time_out=5)
+
+            self.assertEqual(clicks, [COORD.THEATRE_ESC_RETRY, COORD.THEATRE_RESTART_CONFIRM],
+                             '先点「重新开始」，再点二次确认的「确定」')
+            self.assertFalse(state['dialog'], '最后弹窗要关掉')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
 
     # ---- 走位时间轴：录制的路径不能被改坏 ----
 

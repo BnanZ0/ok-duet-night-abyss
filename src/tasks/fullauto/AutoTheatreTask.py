@@ -22,6 +22,7 @@ OBJECTIVE_PANEL_FIGHT = 'theatre_fight'       # 同一个菱形的战斗态标�
 # 不是上面两个模板：形状一样、只有颜色不同，而模板在明亮场景里会失手。
 INTERACT_PROMPT = 'theatre_f'                 # 机关「F 操作」提示，走位到位的唯一判据
 ESC_RETRY = 'esc_retry'                       # 局内菜单「重新开始」
+RESTART_CONFIRM = 'esc_restart_check_btn'     # 「是否重新开始战斗」二次确认弹窗的「确定」
 RESULT_WIN = 'theatre_win'                    # 结算页右下角黄色圆圈「前往」
 RESULT_FAIL = 'theatre_fail'                  # 结算页「返回」，只当失败判据，不点它
 RESULT_RETRY = 'theatre_retry'                # 结算页「再次挑战」
@@ -339,9 +340,10 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.send_key_up(key)
 
     def restart_in_mission(self, time_out=10, load_time_out=LOAD_TIME_OUT):
-        """走位/开机关失败后局内重来：ESC 打开局内菜单 -> 点「重新开始」（没有二次确认）。
+        """走位/开机关失败后局内重来：ESC 开菜单 -> 点「重新开始」-> 点二次确认的「确定」。
 
-        重开会把关卡重新加载一遍，菜单和加载画面都会盖掉目标栏判据，所以"先消失再回来"
+        两个都是云游戏爱丢的点击，所以都是"点到出结果为止"：先点到弹窗出来，再点到弹窗消失。
+        重开会把关卡重新加载一遍，菜单/弹窗/加载画面都会盖掉目标栏判据，所以"先消失再回来"
         正好当重开完成的信号；万一它没消失（秒重开）也不会卡住，直接往下走。
         """
         start = time.time()
@@ -351,7 +353,18 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.send_key("esc")
             self.wait_until(lambda: self.find_one(ESC_RETRY) is not None, time_out=2,
                             raise_if_not_found=False)
-        self.click_ui_coord(COORD.THEATRE_ESC_RETRY, name=ESC_RETRY, after_sleep=1)
+        self.wait_until(
+            condition=lambda: self.find_one(RESTART_CONFIRM) is not None,
+            post_action=lambda: self.click_ui_coord(COORD.THEATRE_ESC_RETRY, name=ESC_RETRY,
+                                                    after_sleep=0.5),
+            time_out=time_out,
+        )
+        self.wait_until(
+            condition=lambda: not self.find_one(RESTART_CONFIRM),
+            post_action=lambda: self.click_ui_coord(COORD.THEATRE_RESTART_CONFIRM,
+                                                    name=RESTART_CONFIRM, after_sleep=0.5),
+            time_out=time_out,
+        )
         self.wait_until(lambda: self.find_objective_panel() is None, time_out=time_out,
                         raise_if_not_found=False)
         self.wait_mission_loaded(time_out=load_time_out)

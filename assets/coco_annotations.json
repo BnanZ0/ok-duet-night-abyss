@@ -227,6 +227,12 @@
             "file_name": "images/0.png",
             "width": 1600,
             "height": 900
+        },
+        {
+            "id": 39,
+            "file_name": "images/2.png",
+            "width": 1600,
+            "height": 900
         }
     ],
     "annotations": [
@@ -1014,6 +1020,19 @@
             ],
             "area": 6660,
             "iscrowd": 0
+        },
+        {
+            "id": 56,
+            "image_id": 39,
+            "category_id": 56,
+            "bbox": [
+                827,
+                509,
+                31,
+                32
+            ],
+            "area": 992,
+            "iscrowd": 0
         }
     ],
     "categories": [
@@ -1290,6 +1309,11 @@
         {
             "id": 55,
             "name": "theatre_stage",
+            "supercategory": ""
+        },
+        {
+            "id": 56,
+            "name": "esc_restart_check_btn",
             "supercategory": ""
         }
     ]
