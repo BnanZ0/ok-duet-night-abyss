@@ -1,3 +1,4 @@
+import random
 import re
 import time
 import numpy as np
@@ -103,8 +104,8 @@ class CommissionsTask(BaseDNATask):
 
         目标点就在正前方、只有距离不定的副本用这个模式，不用配时长。战斗判据出现时
         人往往还差一点才走进交战区，所以判据成立后再走 AUTO_ADVANCE_EXTRA_TIME 秒。
-        失败走 give_up_mission() 而不是只开 ESC 菜单：菜单开着时 in_team() 仍为真，
-        主循环的 handle_mission_interface 会直接 return，菜单永远没人点。
+        超时走 `advance_failed()`：默认放弃并重开（而不是只开 ESC 菜单 —— 菜单开着时
+        in_team() 仍为真，主循环的 handle_mission_interface 会直接 return，菜单永远没人点）。
         """
         self.send_key_down("w")
         try:
@@ -118,11 +119,19 @@ class CommissionsTask(BaseDNATask):
                     while time.time() < extra_deadline:
                         self.next_frame()
                     return True
-            self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
-            self.give_up_mission()
-            return False
+            return self.advance_failed()
         finally:
             self.send_key_up("w")
+
+    def advance_failed(self):
+        """「自动前进到开战」走满 AUTO_ADVANCE_TIME_OUT 秒还没进战斗。
+
+        默认按委托的处理：放弃这次副本（返回 False）。
+        没有「放弃挑战」按钮的模式（沉浸式戏剧）自己覆盖这个方法。
+        """
+        self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
+        self.give_up_mission()
+        return False
 
     def move_on_begin(self):
         """开局处理：复位角色位置 / 向前走几秒 / 前进到进入战斗。每次进局内只做一次。
@@ -134,11 +143,23 @@ class CommissionsTask(BaseDNATask):
         if self._mission_started or self.external_movement is not _default_movement:
             return True
         self._mission_started = True
+        return self.apply_afk_mode()
+
+    def apply_afk_mode(self, allow_reset=True):
+        """按「挂机模式」配置处理角色当前的位置：复位角色 / 向前走几秒 / 前进到开战。
+
+        原本只是 `move_on_begin()` 的开局处理，抽出来是因为沉浸式戏剧要在"切层"时再跑
+        一次同样的处理 —— 那边由任务自己调用，不走 `move_on_begin` 的一次性开关。
+
+        allow_reset=False 时跳过"复位角色位置"，其它模式照常（戏剧的 BOSS 层用：
+        那里的复位角色会把角色传到 BOSS 场地外面）。
+        """
         mode = self.config.get("挂机模式")
         if mode == "开局重置角色位置":
-            self.reset_and_transport()
-            # 防卡墙
-            self.send_key("w", down_time=0.5)
+            if allow_reset:
+                self.reset_and_transport()
+                # 防卡墙
+                self.send_key("w", down_time=0.5)
         elif mode == "开局向前走":
             if (walk_sec := self.config.get("开局向前走", 0)) > 0:
                 self.send_key("w", down_time=walk_sec)
@@ -521,6 +542,17 @@ class CommissionsTask(BaseDNATask):
             )
         self.sleep(0.1)
         self.wait_until(lambda: not self.in_team(), time_out=3, settle_time=0.5)
+
+    def create_random_walk_ticker(self):
+        """创建一个随机游走的计时器函数（`随机游走` 打开时才真的走）。"""
+        def action():
+            if not self.config.get("随机游走", False):
+                return
+            duration = random.uniform(0, 1)
+            direction = random.choice(["w", "a", "s", "d"])
+            self.send_key(direction, down_time=duration)
+
+        return self.create_ticker(action, interval=5, interval_random_range=(0.8, 2))
 
     def create_skill_ticker(self):
         skills = []
