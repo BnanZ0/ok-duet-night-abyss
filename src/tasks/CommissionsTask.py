@@ -582,6 +582,9 @@ class CommissionsTask(BaseDNATask):
                     self.get_current_char().send_geniemon_key()
                 elif skill == "普攻":
                     self.get_current_char().click()
+                elif skill == "重击":
+                    self.get_current_char().hold_normal_attack(
+                        self.commission_skill_config.get("重击长按时间", 1.5))
                 if after_sleep > 10:
                     self.log_onetime_info(f"检测到长延时：释放技能 {local_n} 后将等待 {after_sleep} 秒，可能影响脚本运行，请确认是否符合预期")
                 self.sleep(after_sleep)

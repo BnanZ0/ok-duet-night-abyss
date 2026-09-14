@@ -587,3 +587,12 @@ msgstr "Auto Immersive Theatre"
 
 msgid "走位/开机关连续失败几次后报错停止"
 msgstr "Stop with an error after this many consecutive movement/mechanism failures"
+
+msgid "重击"
+msgstr "Heavy Attack"
+
+msgid "重击按住左键多久(秒)"
+msgstr "How long to hold the left mouse button for a heavy attack (seconds)"
+
+msgid "重击长按时间"
+msgstr "Heavy Attack Hold Time"
