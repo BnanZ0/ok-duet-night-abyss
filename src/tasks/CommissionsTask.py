@@ -152,7 +152,9 @@ class CommissionsTask(BaseDNATask):
         """
         mode = self.config.get("挂机模式")
         if mode == "开局重置角色位置":
-            self.reset_and_transport()
+            if not self.reset_and_transport():
+                # 复位失败时人已经不在队伍界面了，别让上层以为开局成功
+                return False
             # 防卡墙
             self.send_key("w", down_time=0.5)
         elif mode == "开局向前走":

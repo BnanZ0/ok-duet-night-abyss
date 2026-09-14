@@ -152,21 +152,23 @@ class TestTheatreTask(TaskTestCase):
             self._check(shot, lambda: self.task.find_one(RESTART_CONFIRM), expected=False)
 
     def test_restart_clicks_restart_then_confirm(self):
-        """走位失败重来：点「重新开始」-> 点二次确认的「确定」，两个点击都要真的发出去。
+        """走位失败重来：点「重新开始」-> 点二次确认的「确定」-> 局内菜单必须关掉。
 
         踩过的坑：原来以为「重新开始」没有二次确认，点一下就往下走 —— 弹窗会一直挂着，
-        后面的判据全被它盖住。云游戏会丢点击，所以两个都是"点到出结果为止"。
+        后面的判据全被它盖住。云游戏会丢点击，所以两个都是"点到出结果为止"；
+        而且「确定」之后必须确认局内菜单真的关了（菜单还开着时 in_team() 已经是真，
+        wait_mission_loaded() 会误判成"重开完成"，走位键全打进菜单里）。
         """
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('find_one', 'click_ui_coord', 'send_key', 'wait_mission_loaded',
                      'find_objective_panel', 'log_info')}
-        state = {'dialog': False}
+        state = {'menu': True, 'dialog': False}
         clicks = []
         try:
             def fake_find_one(name, *args, **kwargs):
                 if name == ESC_RETRY:
-                    return 'retry' if not state['dialog'] else None
+                    return 'retry' if state['menu'] else None
                 if name == RESTART_CONFIRM:
                     return 'ok' if state['dialog'] else None
                 return None
@@ -177,6 +179,7 @@ class TestTheatreTask(TaskTestCase):
                     state['dialog'] = True
                 elif coord == COORD.THEATRE_RESTART_CONFIRM:
                     state['dialog'] = False
+                    state['menu'] = False          # 点确定之后关卡重开，菜单关掉
 
             task.find_one = fake_find_one
             task.click_ui_coord = fake_click
@@ -189,6 +192,7 @@ class TestTheatreTask(TaskTestCase):
 
             self.assertEqual(clicks, [COORD.THEATRE_ESC_RETRY, COORD.THEATRE_RESTART_CONFIRM],
                              '先点「重新开始」，再点二次确认的「确定」')
+            self.assertFalse(state['menu'], '最后局内菜单必须关掉')
             self.assertFalse(state['dialog'], '最后弹窗要关掉')
         finally:
             for name, value in original.items():
@@ -742,13 +746,17 @@ class TestTheatreTask(TaskTestCase):
         self.assertIn('开局向前走几秒', self.task.config_description['开局向前走'])
 
     def test_apply_afk_mode_dispatch(self):
-        """三种挂机模式各自的动作：复位角色(+防卡墙) / 向前走 N 秒 / 前进到开战。"""
+        """三种挂机模式各自的动作：复位角色(+防卡墙) / 向前走 N 秒 / 前进到开战。
+
+        复位失败（`reset_and_transport()` 返回 False）要把 False 传出去，
+        不能让上层以为开局成功 —— 那时人已经不在队伍界面了。
+        """
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('config', 'reset_and_transport', 'send_key', 'advance_until_combat')}
         keys = []
         try:
-            task.reset_and_transport = lambda: keys.append('reset')
+            task.reset_and_transport = lambda: keys.append('reset') or True
             task.send_key = lambda key, **kw: keys.append(f'{key} {kw.get("down_time")}')
             task.advance_until_combat = lambda: keys.append('advance')
 

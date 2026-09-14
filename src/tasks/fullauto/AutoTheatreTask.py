@@ -370,8 +370,12 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                                                     name=RESTART_CONFIRM, after_sleep=0.5),
             time_out=time_out,
         )
-        self.wait_until(lambda: self.find_objective_panel() is None, time_out=time_out,
-                        raise_if_not_found=False)
+        # 弹窗没了不等于真重开了：局内菜单必须也关掉，否则走位键全打进菜单里。
+        # 云游戏丢那一下点击时就是这种情况：菜单还开着，可 in_team() 已经是真，
+        # wait_mission_loaded() 会立刻放行 → 后面每一步都失败。
+        if not self.wait_until(lambda: self.find_one(ESC_RETRY) is None, time_out=time_out,
+                               raise_if_not_found=False):
+            raise Exception('点了「重新开始」之后局内菜单一直没关掉，停止任务')
         self.wait_mission_loaded(time_out=load_time_out)
 
     def fight_until_result(self):
@@ -458,6 +462,11 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         文字先变、层后切，中间还有半截读数，所以要连续确认。
         """
         if text is None:
+            # 读不出文字（菜单/结算页/加载，或者某些切换阶段 HUD 不显示那行字）不带任何信息：
+            # 既不能算一次确认，也不能让前后两次读数隔着它凑成"连续 3 次" ——
+            # 那样会在文字刚变、层还没切的时候提前触发移动/复位。
+            self.stage_pending = None
+            self.stage_pending_count = 0
             return False
         if self.stage_text is None or self.same_stage_text(text, self.stage_text):
             # 半截读数（比如只认出「试炼」两个字）也算同一层，但**不能拿它当基准**：
