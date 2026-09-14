@@ -411,6 +411,9 @@ msgstr "자동 Lv.30/65 마의 쐐기"
 msgid "自动70级皎皎币本"
 msgstr "자동 Lv.70 교교 코인 던전"
 
+msgid "自动前进到开战"
+msgstr "자동으로 전투 시작까지 전진"
+
 msgid "自动勘察"
 msgstr "자동 조사"
 

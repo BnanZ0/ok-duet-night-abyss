@@ -21,6 +21,7 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.VIEW
 
         self.setup_commission_config()
+        self.setup_mission_start_config()
 
         self.config_description.update({
             '超时时间': '超时后将发出提示',
@@ -78,7 +79,8 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         while True:
             if self.in_team():
-                self.handle_in_mission()
+                if self.move_on_begin():
+                    self.handle_in_mission()
 
             _status = self.handle_mission_interface(stop_func=self.stop_func)
             if _status == Mission.START:
@@ -99,6 +101,7 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.init_for_next_round()
         self.skill_tick.reset()
         self.current_round = 0
+        self._mission_started = False
 
     def init_for_next_round(self):
         self.init_runtime_state()
@@ -149,6 +152,10 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.get_round_info()
         if self.current_round >= self.config.get("轮次", 3):
             return True
+
+    def is_in_combat(self):
+        """自动前进到开战的停止判据：血清水滴（它自己 skill_tick 的判据）。"""
+        return self.find_serum()
 
     def find_serum(self):
         # 判据：局内左侧的"血清水滴"图标（进战斗后才出现，用来判断是否已进入战斗）

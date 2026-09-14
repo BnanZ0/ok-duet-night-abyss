@@ -23,6 +23,11 @@ from src.tasks.config.CommissionConfig import (
 )
 from src.tasks.config.CommissionSkillConfig import CommissionSkillConfig
 
+# 「自动前进到开战」的最长时间（秒）：走这么久还没进战斗就放弃重开
+AUTO_ADVANCE_TIME_OUT = 20
+# 检测到进入战斗后仍继续前进的秒数：战斗判据出现得比"走进交战区"早一点
+AUTO_ADVANCE_EXTRA_TIME = 2
+
 
 class Mission(Enum):
     START = 1
@@ -40,6 +45,9 @@ class CommissionsTask(BaseDNATask):
         self.mission_status = None
         self.action_timeout = 15
         self.wave_future = None
+        # 有没有被注入录制走位（`move_on_begin` 要判断它）。半自动任务会覆盖这个值，
+        # 自动驱离没有录制机制，保留这里的默认空实现。
+        self.external_movement = _default_movement
 
     @cached_property
     def commission_config(self):
@@ -64,6 +72,79 @@ class CommissionsTask(BaseDNATask):
             "轮次": "打几个轮次",
             "超时时间": "超时后将重启任务",
         })
+
+    def setup_mission_start_config(self):
+        """开局挂机配置。定义只有这一份，手动半自动任务和自动驱离共用。"""
+        self._mission_started = False
+        self.default_config.update({
+            "随机游走": False,
+            "挂机模式": "开局重置角色位置",
+            "开局向前走": 0.0,
+        })
+        self.config_description.update({
+            "随机游走": "是否在任务中随机移动",
+            "开局向前走": "开局向前走几秒",
+        })
+        self.config_type["挂机模式"] = {
+            "type": "drop_down",
+            "options": ["开局重置角色位置", "开局向前走", "自动前进到开战"],
+        }
+
+    def is_in_combat(self):
+        """进入战斗的判据：任务信息栏出现波次「x/y」。
+
+        子任务有更贴合的信号（血清、血条）时各自覆盖。
+        """
+        self.get_wave_info()
+        return self.current_wave != -1
+
+    def advance_until_combat(self):
+        """按住 W 一直前进到进入战斗为止，再往前多走一小段，超时就用 ESC 菜单放弃并重开。
+
+        目标点就在正前方、只有距离不定的副本用这个模式，不用配时长。战斗判据出现时
+        人往往还差一点才走进交战区，所以判据成立后再走 AUTO_ADVANCE_EXTRA_TIME 秒。
+        失败走 give_up_mission() 而不是只开 ESC 菜单：菜单开着时 in_team() 仍为真，
+        主循环的 handle_mission_interface 会直接 return，菜单永远没人点。
+        """
+        self.send_key_down("w")
+        try:
+            deadline = time.time() + AUTO_ADVANCE_TIME_OUT
+            while time.time() < deadline:
+                self.next_frame()
+                if self.is_in_combat():
+                    self.log_info(f"已进入战斗，再前进 {AUTO_ADVANCE_EXTRA_TIME} 秒")
+                    # 多走这一段时继续取帧，松手时手里的画面是新的
+                    extra_deadline = time.time() + AUTO_ADVANCE_EXTRA_TIME
+                    while time.time() < extra_deadline:
+                        self.next_frame()
+                    return True
+            self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
+            self.give_up_mission()
+            return False
+        finally:
+            self.send_key_up("w")
+
+    def move_on_begin(self):
+        """开局处理：复位角色位置 / 向前走几秒 / 前进到进入战斗。每次进局内只做一次。
+
+        返回 False 表示这次没能开局成功（已经放弃并退出副本），调用方不要继续
+        跑局内逻辑。被全自动任务注入录制走位时整段跳过 —— 那时起点由录制路线
+        决定，开局前进会把路线的起点带偏。
+        """
+        if self._mission_started or self.external_movement is not _default_movement:
+            return True
+        self._mission_started = True
+        mode = self.config.get("挂机模式")
+        if mode == "开局重置角色位置":
+            self.reset_and_transport()
+            # 防卡墙
+            self.send_key("w", down_time=0.5)
+        elif mode == "开局向前走":
+            if (walk_sec := self.config.get("开局向前走", 0)) > 0:
+                self.send_key("w", down_time=walk_sec)
+        elif mode == "自动前进到开战":
+            return self.advance_until_combat()
+        return True
 
     # ------------------------------------------------------------------
     # 界面判据（唯一出处 src/ui/Defs.py）

@@ -25,6 +25,7 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.VIEW
 
         self.setup_commission_config()
+        self.setup_mission_start_config()
         keys_to_remove = ["轮次"]
         for key in keys_to_remove:
             self.default_config.pop(key, None)
@@ -96,7 +97,8 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         while True:
             if self.in_team():
-                self.handle_in_mission()
+                if self.move_on_begin():
+                    self.handle_in_mission()
             else:
                 self.roulette_task.run()
                 self.maze_task.run()
@@ -121,6 +123,7 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.mission_complete = False
         self.ocr_future = None
         self.last_ocr_result = -1
+        self._mission_started = False
 
     def init_for_next_round(self):
         self.init_runtime_state()
@@ -182,6 +185,11 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
     def stop_func(self):
         pass
+
+    def is_in_combat(self):
+        """自动前进到开战的停止判据：血清采集进度 / 右上 track point（它自己 skill_tick 的判据）。"""
+        self.update_mission_status()
+        return self.runtime_state["in_progress"]
 
     def update_mission_status(self):
         if self.mission_complete:
