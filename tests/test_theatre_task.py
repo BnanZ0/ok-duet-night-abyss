@@ -456,7 +456,7 @@ class TestTheatreTask(TaskTestCase):
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick', 'restart_in_mission',
+                     'read_stage_text', 'restart_in_mission',
                      'no_combat_failures')}
         original_time = theatre_module.time
         seq = list(in_combat_seq)
@@ -481,7 +481,6 @@ class TestTheatreTask(TaskTestCase):
             task.log_info = lambda message, *args, **kwargs: logs.append(message)
             task.sleep = lambda seconds: None
             task.read_stage_text = lambda: None
-            task.random_walk_tick = lambda: None
             task.restart_in_mission = lambda *args, **kwargs: restarts.append(1)
             task.no_combat_failures = 0
             theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
@@ -532,7 +531,7 @@ class TestTheatreTask(TaskTestCase):
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick', 'restart_in_mission',
+                     'read_stage_text', 'restart_in_mission',
                      'no_combat_failures', 'config')}
         original_time = theatre_module.time
         clock = {'now': 0.0}
@@ -548,7 +547,6 @@ class TestTheatreTask(TaskTestCase):
             task.log_info = lambda *args, **kwargs: None
             task.sleep = lambda seconds: None
             task.read_stage_text = lambda: None
-            task.random_walk_tick = lambda: None
             task.restart_in_mission = lambda *args, **kwargs: None
             task.config = {'开机关重试次数': 2}
             task.no_combat_failures = 2                 # 已经重开过两次
@@ -566,7 +564,7 @@ class TestTheatreTask(TaskTestCase):
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick', 'apply_afk_mode',
+                     'read_stage_text', 'apply_afk_mode',
                      'no_combat_failures')}
         original_time = theatre_module.time
         texts = ['第一试炼', '第二试炼', '第二试炼', '第二试炼']
@@ -582,7 +580,6 @@ class TestTheatreTask(TaskTestCase):
             task.skill_tick = lambda: None
             task.log_info = lambda message, *args, **kwargs: logs.append(message)
             task.sleep = lambda seconds: None
-            task.random_walk_tick = lambda: None
             task.apply_afk_mode = lambda: afk.append(1)
             task.no_combat_failures = 0
             task.reset_stage_detector()
@@ -776,12 +773,6 @@ class TestTheatreTask(TaskTestCase):
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
-
-    def test_random_walk_ticker_is_shared(self):
-        """随机游走计时器从自动驱离提到了 CommissionsTask，两边共用一份实现。"""
-        from src.tasks.AutoExpulsion import AutoExpulsion
-        self.assertIs(AutoExpulsion.create_random_walk_ticker,
-                      commissions_module.CommissionsTask.create_random_walk_ticker)
 
     def test_move_on_begin_still_runs_only_once(self):
         """开局处理仍然只做一次：抽成 apply_afk_mode 之后不能变成每次进局内都跑。"""

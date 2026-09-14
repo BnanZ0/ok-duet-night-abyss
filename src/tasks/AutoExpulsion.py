@@ -1,5 +1,6 @@
 from qfluentwidgets import FluentIcon
 import time
+import random
 
 from ok import Logger, TaskDisabledException
 from src.tasks.DNAOneTimeTask import DNAOneTimeTask
@@ -97,3 +98,14 @@ class AutoExpulsion(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     
     def stop_func(self):
         pass
+
+    def create_random_walk_ticker(self):
+        """创建一个随机游走的计时器函数。"""
+        def action():
+            if not self.config.get("随机游走", False):
+                return
+            duration = random.uniform(0, 1)
+            direction = random.choice(["w", "a", "s", "d"])
+            self.send_key(direction, down_time=duration)
+
+        return self.create_ticker(action, interval=5, interval_random_range=(0.8, 2))

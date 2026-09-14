@@ -2,8 +2,6 @@
 import os
 import unittest
 
-import polib
-
 from ok import TaskDisabledException
 from ok.test.TaskTestCase import TaskTestCase
 
@@ -19,6 +17,24 @@ HEAVY_ATTACK_STRINGS = ["重击", "重击长按时间", "重击按住左键多�
 
 def po_path(lang, name):
     return os.path.join(REPO, 'i18n', lang, 'LC_MESSAGES', name)
+
+
+def read_po_msgids(lang):
+    """极简 .po 读取：只取 msgid -> msgstr，够查这几条文案。
+
+    （不引 polib：它只声明在 pyproject 里，CI 装的是 requirements.txt，导入会直接失败。）
+    """
+    entries = {}
+    msgid = None
+    with open(po_path(lang, 'ok.po'), encoding='utf-8') as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith('msgid '):
+                msgid = line[len('msgid '):].strip().strip('"')
+            elif line.startswith('msgstr ') and msgid is not None:
+                entries[msgid] = line[len('msgstr '):].strip().strip('"')
+                msgid = None
+    return entries
 
 
 class FakeTask:
@@ -77,16 +93,20 @@ class TestHeavyAttackConfig(unittest.TestCase):
         所以它的 .mo 里本来就只有那些英文 key，只查 .po。
         """
         for lang in LANGS:
-            by_id = {entry.msgid: entry for entry in polib.pofile(po_path(lang, 'ok.po'))}
+            entries = read_po_msgids(lang)
             for msgid in HEAVY_ATTACK_STRINGS:
-                self.assertIn(msgid, by_id, f'{lang}/ok.po 缺少 {msgid}')
+                self.assertIn(msgid, entries, f'{lang}/ok.po 缺少 {msgid}')
                 if lang != 'zh_CN':
-                    self.assertTrue(by_id[msgid].msgstr, f'{lang}/ok.po 的 {msgid} 没填翻译')
+                    self.assertTrue(entries[msgid], f'{lang}/ok.po 的 {msgid} 没填翻译')
             if lang == 'zh_CN':
                 continue
-            msgids = {entry.msgid for entry in polib.mofile(po_path(lang, 'ok.mo'))}
+            with open(po_path(lang, 'ok.mo'), 'rb') as file:
+                compiled = file.read()
             for msgid in HEAVY_ATTACK_STRINGS:
-                self.assertIn(msgid, msgids, f'{lang}/ok.mo 缺少 {msgid}（.po 改了没重编译？）')
+                self.assertIn(msgid.encode('utf-8'), compiled,
+                              f'{lang}/ok.mo 缺少 {msgid}（.po 改了没重编译？）')
+                self.assertIn(entries[msgid].encode('utf-8'), compiled,
+                              f'{lang}/ok.mo 里的 {msgid} 不是 .po 里那句（没重编译？）')
 
 
 class TestHoldNormalAttack(unittest.TestCase):

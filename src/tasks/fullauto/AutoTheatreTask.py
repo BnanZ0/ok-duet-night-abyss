@@ -128,7 +128,6 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         })
 
         self.skill_tick = self.create_skill_ticker()
-        self.random_walk_tick = self.create_random_walk_ticker()
         # 云游戏实拍帧糊、模板分低，给足重试轮次
         self.action_timeout = 20
         self.current_floor = 0
@@ -415,7 +414,6 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.apply_afk_mode()
                 self.reset_stage_detector()
             self.skill_tick()
-            self.random_walk_tick()
             self.sleep(0.2)
 
     # ------------------------------------------------------------------
