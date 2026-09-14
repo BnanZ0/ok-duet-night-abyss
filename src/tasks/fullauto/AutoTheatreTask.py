@@ -432,11 +432,13 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.stage_next_ocr = 0.0
 
     def read_stage_text(self):
-        """读左上目标栏那行关号（「开启第一试炼」/「第一试炼」），最多 STAGE_OCR_INTERVAL 秒一次。
+        """读一次关号；读不到就返回 None（没到该读的时间 / 认不出 / 分数不够）。
 
-        菜单、结算页、加载画面读不出文字（实测为空），低分噪声也不算 —— 一律返回 None，
-        调用方按"没读到"处理，不能当成"变了"。1 秒一次的小区域 OCR 只花几十毫秒，
-        没必要像波次那样丢线程池。
+        返回 None 只说明"这一轮没有信息"，**不代表关号变了**，调用方必须把它当透明的。
+        实测有些切换阶段 HUD 根本不显示那行字，加上主循环 0.2 秒一轮、OCR 1 秒一次的节流，
+        每两次真读数之间都夹着好几个 None。
+
+        1 秒一次的小区域 OCR 只花几十毫秒，没必要像波次那样丢线程池。
         """
         if time.time() < self.stage_next_ocr:
             return None
@@ -462,11 +464,9 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         文字先变、层后切，中间还有半截读数，所以要连续确认。
         """
         if text is None:
-            # 读不出文字（菜单/结算页/加载，或者某些切换阶段 HUD 不显示那行字）不带任何信息：
-            # 既不能算一次确认，也不能让前后两次读数隔着它凑成"连续 3 次" ——
-            # 那样会在文字刚变、层还没切的时候提前触发移动/复位。
-            self.stage_pending = None
-            self.stage_pending_count = 0
+            # 空读数完全透明：不改基准、不清候选、不动计数。它既不能算一次确认，也不能把已经
+            # 攒下的"连续 3 次"打断 —— 打断的后果是切层永远确认不了，层间的移动/复位全都不执行
+            # （实机复现过：改成"空读数就清零"之后，向前走/复位再也不触发）。
             return False
         if self.stage_text is None or self.same_stage_text(text, self.stage_text):
             # 半截读数（比如只认出「试炼」两个字）也算同一层，但**不能拿它当基准**：
