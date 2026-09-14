@@ -82,6 +82,9 @@ STAGE_SWITCH_TIME_OUT = 15
 # 一个关卡 5 层（第 1~5 试炼），最后一层是 BOSS 层：复位角色会把人传到 BOSS 场地外面，
 # 所以切进最后一层什么都不做。也就是一个关卡里只复位 3 次（第 1->2、2->3、3->4 层）。
 LAYERS_PER_STAGE = 5
+# 新关卡第 1 层：判据刚出现时角色还在落地/过场收尾，这时候按走位键会被吃掉前面一段
+# （表现就是"走位变短了、走不到机关"），所以等关卡加载完再稳这么久才开始走位。
+FIRST_LAYER_SETTLE = 1
 
 
 class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -272,6 +275,7 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             return
         if not self.mission_started:
             self.wait_mission_loaded()
+            self.sleep(FIRST_LAYER_SETTLE)
             self.mission_started = True
             self.stage_index = 1
             self.walk_and_interact()

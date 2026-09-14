@@ -385,7 +385,7 @@ class TestTheatreTask(TaskTestCase):
         """
         task = self.task
         original = {name: getattr(task, name) for name in
-                    ('find_one', 'wait_mission_loaded', 'walk_and_interact',
+                    ('find_one', 'wait_mission_loaded', 'walk_and_interact', 'sleep',
                      'fight_until_result', 'skill_tick', 'mission_started')}
         resets = []
 
@@ -397,6 +397,7 @@ class TestTheatreTask(TaskTestCase):
             task.find_one = lambda *a, **kw: None
             task.wait_mission_loaded = lambda *a, **kw: None
             task.walk_and_interact = lambda: None
+            task.sleep = lambda seconds: None
             task.fight_until_result = lambda: None
             task.skill_tick = fake_tick
             for _ in range(3):                      # 连进三层
@@ -407,6 +408,39 @@ class TestTheatreTask(TaskTestCase):
             task.mission_started = True             # 同一层里再进一次
             task.handle_in_mission()
             self.assertEqual(len(resets), 3, '同一层内不该重复重置（否则技能会被反复插队）')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_walk_starts_one_second_after_the_level_is_loaded(self):
+        """新关卡第 1 层：判据出来之后先稳 1 秒再走位。
+
+        判据刚出现时角色还在落地/过场收尾，这时候按走位键会被吃掉前面一段 —— 表现就是
+        "走位距离变短、走不到机关"，然后连续 4 次失败报错停止。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('find_one', 'wait_mission_loaded', 'walk_and_interact', 'sleep',
+                     'fight_until_result', 'skill_tick', 'mission_started', 'log_info')}
+        events = []
+
+        def fake_tick():
+            pass
+
+        fake_tick.reset = lambda: None
+        try:
+            task.find_one = lambda *a, **kw: None
+            task.wait_mission_loaded = lambda *a, **kw: events.append('loaded')
+            task.sleep = lambda seconds: events.append(('sleep', seconds))
+            task.walk_and_interact = lambda: events.append('walk')
+            task.fight_until_result = lambda: None
+            task.skill_tick = fake_tick
+            task.log_info = lambda *a, **kw: None
+            task.mission_started = False
+            task.handle_in_mission()
+            self.assertEqual(events, ['loaded', ('sleep', theatre_module.FIRST_LAYER_SETTLE), 'walk'],
+                             '加载完 -> 稳 1 秒 -> 才开始走位')
+            self.assertEqual(theatre_module.FIRST_LAYER_SETTLE, 1)
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
