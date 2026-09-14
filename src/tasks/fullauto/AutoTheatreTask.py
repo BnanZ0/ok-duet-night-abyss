@@ -60,10 +60,10 @@ INTERACT_INTERVAL = 0.5
 FIGHT_TIME_OUT = 10
 # 点了「前往」/「再次挑战」之后等离开当前界面、等进关卡加载完成的上限
 LOAD_TIME_OUT = 30
-# 兜底：按 F 开战之后到结算页出现之前一律算战斗、从不停手，判据只用来判断"是不是掉线了"。
-# 连续这么多秒连结果页/局内菜单/HUD/目标栏都认不出来才报错停止；战斗本身不设超时
-# （游戏自己会超时进结算页）。
-MISSION_LOST_TIME_OUT = 120
+# 兜底：按 F 开战之后到结算页出现之前一律算战斗、从不停手（判据在实机上会闪，拿它控制节奏
+# 会让技能一顿一顿）。只有红菱形连续消失这么久（掉线、卡在读条、结算页被漏读后停在
+# "开启第 X 试炼"那一阶段）才算没进战斗：重开一局，退回去重走第 1 层的走位开机关。
+NO_COMBAT_TIME_OUT = 30
 
 # ---- 切层检测（左上目标栏那行关号：「开启第一试炼」/「第一试炼」）----
 # 只拿 `theatre_stage` 的标注框当 OCR 区域，**不做模板匹配**：那行字是游戏文本，
@@ -75,13 +75,6 @@ STAGE_OCR_INTERVAL = 1.0
 STAGE_CONFIRM_COUNT = 3
 # OCR 置信度下限：菜单/结算页/加载画面读不出文字，低分噪声（实测结算页会吐 0.65 的「-」）也不算
 STAGE_MIN_CONFIDENCE = 0.9
-# 等切层动画收尾的上限：目标栏（红菱形）回来就算切好了。文字确认变化时多半已经是红的，
-# 所以通常立刻返回；等满这么久还不红只是记一条警告，不报错。
-# 别调大：一层打得快，等 30 秒可能这一层都已经打完了。
-STAGE_SWITCH_TIME_OUT = 15
-# 一个关卡 5 层（第 1~5 试炼），最后一层是 BOSS 层：复位角色会把人传到 BOSS 场地外面，
-# 所以切进最后一层什么都不做。也就是一个关卡里只复位 3 次（第 1->2、2->3、3->4 层）。
-LAYERS_PER_STAGE = 5
 # 新关卡第 1 层：判据刚出现时角色还在落地/过场收尾，这时候按走位键会被吃掉前面一段
 # （表现就是"走位变短了、走不到机关"），所以等关卡加载完再稳这么久才开始走位。
 FIRST_LAYER_SETTLE = 1
@@ -90,16 +83,16 @@ FIRST_LAYER_SETTLE = 1
 class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     """自动沉浸式戏剧（不朽剧目·勇者征程）。
 
-    关卡结构：一个关卡 5 层（第 1~5 试炼），只有**新关卡的第 1 层**要走到机关按 F 开战；
-    第 2~5 层是游戏自己切、自己开打的。所以脚本只在"新关卡第 1 层"走位开机关，层与层之间
-    等切层动画收尾 + 按「挂机模式」处理一次角色位置；**最后一层是 BOSS 层，什么都不做**
-    （复位角色会把人传到 BOSS 场地外面），也就是一个关卡只复位 3 次。5 层打完出结算页，
-    点「前往」进下一个关卡（又是第 1 层，重新走位开机关）。
+    关卡结构：一个关卡 5 层（第 1~5 试炼），只有**第 1 层**要走到机关按 F 开战；
+    第 2~5 层游戏自己切、自己开打。所以「挂机模式」那套移动/复位配置只在**层与层之间**
+    执行（第 1 层走录制路线），脚本不数层、也没有 BOSS 层的特例。
 
-    循环：「阵容页 -> 进图 -> 走位开机关 -> 挂机（层间切层处理）-> 结算页 -> 再进图」。
+    结束条件：出现结算页 = 这一局打完，按「打几层」计数。挂机期间红菱形连续消失
+    NO_COMBAT_TIME_OUT 秒（掉线、卡读条、结算页被漏读后停在"开启第 X 试炼"阶段）就重开
+    一局，退回第 1 层重新走位开机关。
 
     失败重试：走位/开机关连续失败、结算连续失败各自计数，配置 N 表示允许重试 N 次、
-    第 N+1 次连续失败报错停止；中间成功一次就清零。关卡数由「打几层」控制，0 = 无限。
+    第 N+1 次连续失败报错停止；中间成功一次就清零。
     """
 
     def __init__(self, *args, **kwargs):
@@ -132,9 +125,9 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.action_timeout = 20
         self.current_floor = 0
         self.interact_failures = 0
+        self.no_combat_failures = 0
         self.result_failures = 0
         self.mission_started = False
-        self.stage_index = 0
         self.reset_stage_detector()
 
     # ------------------------------------------------------------------
@@ -186,9 +179,9 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.skill_tick.reset()
         self.current_floor = 0
         self.interact_failures = 0
+        self.no_combat_failures = 0
         self.result_failures = 0
         self.mission_started = False
-        self.stage_index = 0
         self.reset_stage_detector()
 
     def retry_limit(self, key, default=3):
@@ -260,33 +253,34 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def is_in_combat(self):
         """目标栏菱形变红 = 已开战（只看颜色，和界面语言、背景明暗都无关）。
 
-        位置优先用菱形模板（现在只截菱形内部、不含背景，所以亮暗场景都能命中），
-        没匹上就退回固定框 —— 离线实测亮场景那颗菱形只有 0.802，压着 0.8 的阈值，
-        差一点点就会把"已开战"漏判成没开战（表现：切层后等红菱形白等到超时）。
+        位置优先用菱形模板（只截菱形内部、不含背景，亮暗场景都能命中），没匹上就退回固定框 ——
+        离线实测亮场景那颗菱形只有 0.802，压着 0.8 的阈值，差一点点就会把"已开战"漏判成
+        没开战（表现：明明在打，却按"没进战斗"处理，30 秒后误判成超时重开一局）。
         红色占比（阈值 0.15）：模板框内 金 0.000 / 红 0.89~0.91；固定框内 金 0.000 / 红 0.23~0.26。
         """
         box = self.find_objective_panel() or self.screen_box(OBJECTIVE_DIAMOND_BOX)
         return self.calculate_color_percentage(OBJECTIVE_RED, box) > OBJECTIVE_RED_THRESHOLD
 
     def handle_in_mission(self):
+        """关内一次处理：第 1 层走位开机关，然后一直挂到结算页或需要重开一局。"""
         if self.find_one(ESC_RETRY):
             # 局内菜单被打开了（一般是玩家自己按的 ESC）：关掉继续，绝不在这里点菜单
             self.send_key("esc", after_sleep=0.5)
             return
         if not self.mission_started:
+            # 第 1 层：走录制路线到机关按 F 开战，**不执行「挂机模式」那套移动/复位配置**
+            # （那个配置只在层与层之间用）。判据刚出来时角色还在落地收尾，先稳一秒再走。
             self.wait_mission_loaded()
             self.sleep(FIRST_LAYER_SETTLE)
             self.mission_started = True
-            self.stage_index = 1
             self.walk_and_interact()
-            # 每一关都是从零开始打，技能计时器必须重新武装：`reset()` 让下一次 tick 立刻触发。
-            # 不重置的话长频率技能（比如「终结技 600 秒」）只有在第一关会放，后面每一关
-            # 都在等第一关那次计时的剩余间隔，等于整关不放技能。
+            # 每一局都是从零开始打，技能计时器必须重新武装：`reset()` 让下一次 tick 立刻触发。
+            # 不重置的话长频率技能（比如「终结技 600 秒」）只会在第一层放，后面都在等剩余间隔。
             self.skill_tick.reset()
             self.reset_stage_detector()
-        # 挂机；游戏自己切到下一关（关号变了）就把这一关的开头处理一遍再接着挂
-        while self.fight_until_result():
-            self.handle_stage_switch()
+        if not self.fight_until_result():
+            # 30 秒没进战斗（含结算页被漏读、掉线）：已经重开了一局，退回第 1 层重新走位开机关
+            self.mission_started = False
 
     def wait_mission_loaded(self, time_out=LOAD_TIME_OUT):
         """等关卡加载完：目标栏菱形或者通用局内 HUD（左下角 Lv）出来都算。
@@ -373,38 +367,40 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                         raise_if_not_found=False)
         self.wait_mission_loaded(time_out=load_time_out)
 
-    def in_combat_screen(self):
-        """画面还算"在关内"吗 —— 只用来判断是不是掉线了，不用来决定放不放技能。
-
-        两个判据取并集：通用的局内 HUD（`in_team()`，靠左下角 Lv 文字）和本模式的
-        左上目标栏。实机上它们都会偶尔失手，所以这个判断不适合控制技能节奏，
-        只适合"连续多久什么都认不出来"这种粗粒度兜底。
-        """
-        return self.in_team() or self.find_objective_panel() is not None
-
     def fight_until_result(self):
-        """挂机到结算页出现（返回 False），或者检测到切到下一关（返回 True）。
+        """挂机。返回 True = 结算页出现（这一局打完），False = 该重开一局。
 
-        进战斗之后（按 F 确认开战）到结算页出现之前，**一律算战斗状态、从不停手**：
-        这个模式的判据在实机上会闪，拿它们控制"停不停手"会让技能一顿一顿的。
-        只有连续 MISSION_LOST_TIME_OUT 秒连结果页/局内菜单/HUD/目标栏都认不出来
-        （掉线、被踢回主界面）才报错停止。
+        进战斗之后**一律算战斗状态、从不停手**：判据在实机上会闪，拿它们控制"停不停手"
+        会让技能一顿一顿的。只有红菱形连续 NO_COMBAT_TIME_OUT 秒都不在（掉线、卡在读条、
+        结算页被漏读后停在"开启第 X 试炼"那一阶段）才算没进战斗 —— 重开一局，
+        退回第 1 层重新走位开机关。
+
+        层与层之间（关号变了）就地处理：按「挂机模式」处理一次角色位置，然后接着挂。
         """
-        lost_since = None
+        no_combat_since = None
         while True:
             if self.find_one(RESULT_WIN) or self.find_one(RESULT_FAIL):
-                return False
+                return True
             if self.find_one(ESC_RETRY):
                 self.send_key("esc", after_sleep=0.5)
                 continue
-            if self.in_combat_screen():
-                lost_since = None
-            elif lost_since is None:
-                lost_since = time.time()
-            elif time.time() - lost_since > MISSION_LOST_TIME_OUT:
-                raise Exception(f'连续 {MISSION_LOST_TIME_OUT} 秒什么状态都认不出来，停止任务')
+            if self.is_in_combat():
+                no_combat_since = None
+                self.no_combat_failures = 0
+            elif no_combat_since is None:
+                no_combat_since = time.time()
+            elif time.time() - no_combat_since > NO_COMBAT_TIME_OUT:
+                self.no_combat_failures += 1
+                if self.no_combat_failures > self.retry_limit('开机关重试次数'):
+                    raise Exception(f'连续 {self.no_combat_failures} 次开不了战，停止任务')
+                self.log_info(f'{NO_COMBAT_TIME_OUT} 秒没进战斗，重开一局'
+                              f'（第 {self.no_combat_failures} 次）')
+                self.restart_in_mission()
+                return False
             if self.update_stage_text(self.read_stage_text()):
-                return True
+                self.log_info('检测到切层，按「挂机模式」处理角色位置')
+                self.apply_afk_mode()
+                self.reset_stage_detector()
             self.skill_tick()
             self.random_walk_tick()
             self.sleep(0.2)
@@ -414,7 +410,7 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     # ------------------------------------------------------------------
 
     def reset_stage_detector(self):
-        """按 F 开战之后调用：第一次读到的关号只当基准点，所以第一层不会触发重置。"""
+        """每局开始（第 1 层按完 F）调用：第一次读到的关号只当基准点，不算切层。"""
         self.stage_text = None
         self.stage_pending = None
         self.stage_pending_count = 0
@@ -446,14 +442,18 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         return one == other or one in other or other in one
 
     def update_stage_text(self, text):
-        """把一次读数喂进状态机：连续 STAGE_CONFIRM_COUNT 次读到同一个新关号才算切层。
+        """把一次读数喂进状态机：连续 STAGE_CONFIRM_COUNT 次读到同一个新关号就是切层了。
 
         文字先变、层后切，中间还有半截读数，所以要连续确认。
         """
         if text is None:
             return False
         if self.stage_text is None or self.same_stage_text(text, self.stage_text):
-            self.stage_text = text
+            # 半截读数（比如只认出「试炼」两个字）也算同一层，但**不能拿它当基准**：
+            # 基准一旦被缩成后缀，「第三试炼」也包含它，后面每次真的切层都会被吞掉
+            # （实测：整整一局一次都没确认到，层与层之间的移动/复位全没执行）。
+            if self.stage_text is None or len(text) > len(self.stage_text):
+                self.stage_text = text
             self.stage_pending = None
             self.stage_pending_count = 0
             return False
@@ -464,38 +464,11 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.stage_pending_count = 1
         if self.stage_pending_count < STAGE_CONFIRM_COUNT:
             return False
-        self.stage_index += 1
-        self.log_info(f'检测到切层：{self.stage_text} -> {text}（本关卡第 {self.stage_index} 层）')
+        self.log_info(f'检测到切层：{self.stage_text} -> {text}')
         self.stage_text = text
         self.stage_pending = None
         self.stage_pending_count = 0
         return True
-
-    def wait_stage_ready(self, time_out=STAGE_SWITCH_TIME_OUT):
-        """等目标栏变红（新一层开打）就算切层动画收尾，可以直接处理角色位置。
-
-        文字确认变化时多半已经是红的了，所以基本是立刻返回。等满上限还不红（加载慢、掉线）
-        不报错：记一条警告，照常往下走。
-        """
-        if self.wait_until(self.is_in_combat, time_out=time_out, raise_if_not_found=False):
-            return True
-        self.log_warning(f'等了 {time_out} 秒目标栏还没变红（加载慢或掉线？），继续处理角色位置')
-        return False
-
-    def handle_stage_switch(self):
-        """切到下一层：只有新关卡的第 1 层要按 F 开机关，层与层之间不用。
-
-        等目标栏变红（切层动画收尾）之后按「挂机模式」处理角色位置。
-        **最后一层（BOSS 层）不做"复位角色"** —— 那里复位会把人传到 BOSS 场地外面；
-        「向前走 / 前进到开战」在 BOSS 层照常生效（这两个只是按键走动，不传送）。
-        """
-        boss_layer = self.stage_index >= LAYERS_PER_STAGE
-        self.log_info('检测到切层，等目标栏变红（新一层开打）')
-        self.wait_stage_ready()
-        if boss_layer:
-            self.log_info(f'第 {self.stage_index} 层是 BOSS 层，跳过复位角色（复位会传到场地外）')
-        self.apply_afk_mode(allow_reset=not boss_layer)
-        self.reset_stage_detector()
 
     def advance_failed(self):
         """「自动前进到开战」在这个模式里超时：没有「放弃挑战」可点，记一条日志继续挂机。

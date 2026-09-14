@@ -145,21 +145,17 @@ class CommissionsTask(BaseDNATask):
         self._mission_started = True
         return self.apply_afk_mode()
 
-    def apply_afk_mode(self, allow_reset=True):
+    def apply_afk_mode(self):
         """按「挂机模式」配置处理角色当前的位置：复位角色 / 向前走几秒 / 前进到开战。
 
-        原本只是 `move_on_begin()` 的开局处理，抽出来是因为沉浸式戏剧要在"切层"时再跑
+        原本只是 `move_on_begin()` 的开局处理，抽出来是因为沉浸式戏剧要在"层间切换"时再跑
         一次同样的处理 —— 那边由任务自己调用，不走 `move_on_begin` 的一次性开关。
-
-        allow_reset=False 时跳过"复位角色位置"，其它模式照常（戏剧的 BOSS 层用：
-        那里的复位角色会把角色传到 BOSS 场地外面）。
         """
         mode = self.config.get("挂机模式")
         if mode == "开局重置角色位置":
-            if allow_reset:
-                self.reset_and_transport()
-                # 防卡墙
-                self.send_key("w", down_time=0.5)
+            self.reset_and_transport()
+            # 防卡墙
+            self.send_key("w", down_time=0.5)
         elif mode == "开局向前走":
             if (walk_sec := self.config.get("开局向前走", 0)) > 0:
                 self.send_key("w", down_time=walk_sec)

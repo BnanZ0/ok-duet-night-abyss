@@ -445,44 +445,26 @@ class TestTheatreTask(TaskTestCase):
             for name, value in original.items():
                 setattr(task, name, value)
 
-    # ---- 挂机期间"还在不在战斗"的判据与抖动处理 ----
-
-    def test_in_combat_screen_is_union(self):
-        """`in_combat_screen()` 是两个判据的并集：任一个命中就算在战斗中。
-
-        实机上 `in_team()`（左下角 Lv 文字）和本模式的目标栏都会各自偶尔失手，
-        单独用任何一个都会把挂机打断。
-        """
-        task = self.task
-        original = {name: getattr(task, name) for name in ('in_team', 'find_objective_panel')}
-        try:
-            for in_team, panel, expected in ((True, None, True), (False, 'panel', True),
-                                             (True, 'panel', True), (False, None, False)):
-                task.in_team = lambda value=in_team: value
-                task.find_objective_panel = lambda value=panel: value
-                self.assertEqual(task.in_combat_screen(), expected,
-                                 f'in_team={in_team} panel={panel} 时判断错了')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
+    # ---- 挂机：什么时候算结束、什么时候算没进战斗 ----
 
     def _fight_case(self, in_combat_seq, exit_at, seconds_per_poll):
-        """跑一遍 fight_until_result，返回（技能次数, 日志列表）。
+        """跑一遍 fight_until_result，返回（返回值, 技能次数, 日志, 重开次数）。
 
-        in_combat_seq 按轮次喂给 in_combat_screen()，超出部分沿用最后一个值；
-        第 exit_at 轮 find_one(RESULT_WIN) 命中（进结算页），时钟每次前进 seconds_per_poll 秒。
+        in_combat_seq 按轮次喂给 is_in_combat()，超出部分沿用最后一个值；
+        第 exit_at 轮 find_one(RESULT_WIN) 命中（结算页出现），时钟每轮前进 seconds_per_poll 秒。
         """
         task = self.task
         original = {name: getattr(task, name) for name in
-                    ('find_one', 'in_combat_screen', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick')}
+                    ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
+                     'read_stage_text', 'random_walk_tick', 'restart_in_mission',
+                     'no_combat_failures')}
         original_time = theatre_module.time
         seq = list(in_combat_seq)
-        logs, skills = [], []
+        logs, skills, restarts = [], [], []
         win = {'n': 0}
         clock = {'now': 0.0}
 
-        def fake_find_one(name, *a, **kw):
+        def fake_find_one(name, *args, **kwargs):
             if name == RESULT_WIN:
                 win['n'] += 1
                 return 'result' if win['n'] >= exit_at else None
@@ -494,62 +476,124 @@ class TestTheatreTask(TaskTestCase):
 
         try:
             task.find_one = fake_find_one
-            task.in_combat_screen = lambda: seq.pop(0) if seq else False
+            task.is_in_combat = lambda: seq.pop(0) if seq else False
             task.skill_tick = lambda: skills.append(1)
-            task.log_info = lambda message, *a, **kw: logs.append(message)
+            task.log_info = lambda message, *args, **kwargs: logs.append(message)
             task.sleep = lambda seconds: None
             task.read_stage_text = lambda: None
             task.random_walk_tick = lambda: None
+            task.restart_in_mission = lambda *args, **kwargs: restarts.append(1)
+            task.no_combat_failures = 0
             theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
-            task.fight_until_result()
-            return skills, logs
+            return task.fight_until_result(), skills, logs, restarts
         finally:
             theatre_module.time = original_time
             for name, value in original.items():
                 setattr(task, name, value)
 
-    def test_fight_never_pauses_when_screen_blinks(self):
-        """进战斗后一律算战斗：判据闪了也照常放技能，也不打任何日志。
+    def test_fight_returns_true_on_result_screen(self):
+        """出现结算页 = 这一局打完：返回 True（交给主循环去点「前往」）。"""
+        result, skills, logs, restarts = self._fight_case([True, True, True], exit_at=3,
+                                                         seconds_per_poll=0.5)
+        self.assertTrue(result)
+        self.assertEqual(len(skills), 2, '结算页出现之前一直在放技能')
+        self.assertEqual(logs, [])
+        self.assertEqual(restarts, [])
 
-        踩过的坑：原来拿 in_team() / 目标栏控制"停不停手"，实机上判据一闪就停手 + 打日志，
-        于是「目标栏不见了 / 画面恢复」反复刷屏、技能一顿一顿的。
-        """
-        skills, logs = self._fight_case([False, True, True], exit_at=3, seconds_per_poll=0.5)
+    def test_fight_never_pauses_when_the_diamond_blinks(self):
+        """进战斗后一律算战斗：红菱形闪了也照常放技能，也不打任何日志。"""
+        result, skills, logs, restarts = self._fight_case([False, True, True], exit_at=3,
+                                                         seconds_per_poll=0.5)
+        self.assertTrue(result)
         self.assertEqual(len(skills), 2, '闪一下的那一轮也必须放技能')
         self.assertEqual(logs, [], '挂机期间不该打日志')
+        self.assertEqual(restarts, [], '闪一下不算"没进战斗"')
 
-    def test_fight_keeps_firing_even_if_screen_never_recognized(self):
-        """画面一直认不出来（还没到掉线上限）也只管放技能，不停手、不刷日志。"""
-        skills, logs = self._fight_case([False, False, False, False, True, True],
-                                       exit_at=6, seconds_per_poll=2.0)
-        self.assertEqual(len(skills), 5, '每一轮都要放技能，判据认不出来也不停手')
-        self.assertEqual(logs, [], '没到掉线上限就不该打日志')
+    def test_fight_keeps_firing_without_red_until_timeout(self):
+        """红菱形不在也只管放技能，没到超时上限就不重开、不刷日志。"""
+        result, skills, logs, restarts = self._fight_case([False, False, False, True, True],
+                                                         exit_at=5, seconds_per_poll=2.0)
+        self.assertTrue(result)
+        self.assertEqual(len(skills), 4, '每一轮都要放技能')
+        self.assertEqual(logs, [], '没到超时上限就不该打日志')
+        self.assertEqual(restarts, [])
 
-    def test_fight_gives_up_when_screen_lost_too_long(self):
-        """连续 120 秒什么状态都认不出来（掉线）就报错停止，而不是无限空转。"""
+    def test_fight_restarts_after_no_combat_timeout(self):
+        """红菱形连续消失 NO_COMBAT_TIME_OUT 秒 = 没进战斗：重开一局，不报错。"""
+        result, skills, logs, restarts = self._fight_case([False] * 20, exit_at=99,
+                                                         seconds_per_poll=5.0)
+        self.assertFalse(result, '该重开一局：返回 False，让调用方退回第 1 层')
+        self.assertEqual(len(restarts), 1, '只重开一次，剩下的交给外层重走第 1 层')
+        self.assertTrue(any(str(theatre_module.NO_COMBAT_TIME_OUT) in message for message in logs),
+                        f'日志要写清楚是 {theatre_module.NO_COMBAT_TIME_OUT} 秒没进战斗')
+
+    def test_fight_stops_after_too_many_no_combat_restarts(self):
+        """一直开不了战（超过「开机关重试次数」）就报错停止，不能无限重开。"""
         task = self.task
         original = {name: getattr(task, name) for name in
-                    ('find_one', 'in_combat_screen', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick')}
+                    ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
+                     'read_stage_text', 'random_walk_tick', 'restart_in_mission',
+                     'no_combat_failures', 'config')}
         original_time = theatre_module.time
         clock = {'now': 0.0}
 
         def fake_now():
-            clock['now'] += 100.0                   # 每次看表前进 100 秒
+            clock['now'] += 40.0                    # 每次都超过上限
             return clock['now']
 
         try:
-            task.find_one = lambda *a, **kw: None
-            task.in_combat_screen = lambda: False
+            task.find_one = lambda *args, **kwargs: None
+            task.is_in_combat = lambda: False
             task.skill_tick = lambda: None
-            task.log_info = lambda *a, **kw: None
+            task.log_info = lambda *args, **kwargs: None
             task.sleep = lambda seconds: None
             task.read_stage_text = lambda: None
             task.random_walk_tick = lambda: None
+            task.restart_in_mission = lambda *args, **kwargs: None
+            task.config = {'开机关重试次数': 2}
+            task.no_combat_failures = 2                 # 已经重开过两次
             theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
             with self.assertRaises(Exception) as caught:
                 task.fight_until_result()
-            self.assertIn('什么状态都认不出来', str(caught.exception))
+            self.assertIn('开不了战', str(caught.exception))
+        finally:
+            theatre_module.time = original_time
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_fight_handles_stage_switch_without_counting(self):
+        """关号变了就地处理：按「挂机模式」动一次角色位置，然后接着挂（不数层）。"""
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
+                     'read_stage_text', 'random_walk_tick', 'apply_afk_mode',
+                     'no_combat_failures')}
+        original_time = theatre_module.time
+        texts = ['第一试炼', '第二试炼', '第二试炼', '第二试炼']
+        clock = {'now': 0.0}
+        afk, logs = [], []
+
+        def fake_now():
+            clock['now'] += 0.5
+            return clock['now']
+
+        try:
+            task.is_in_combat = lambda: True
+            task.skill_tick = lambda: None
+            task.log_info = lambda message, *args, **kwargs: logs.append(message)
+            task.sleep = lambda seconds: None
+            task.random_walk_tick = lambda: None
+            task.apply_afk_mode = lambda: afk.append(1)
+            task.no_combat_failures = 0
+            task.reset_stage_detector()
+            task.read_stage_text = lambda: texts.pop(0) if texts else None
+            # 关号读完后让结算页命中，退出循环
+            task.find_one = lambda name, *args, **kwargs: 'result' if not texts else None
+            theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
+
+            self.assertTrue(task.fight_until_result())
+            self.assertEqual(len(afk), 1, '确认切层后按挂机模式处理一次角色位置')
+            self.assertTrue(any('检测到切层' in message for message in logs))
         finally:
             theatre_module.time = original_time
             for name, value in original.items():
@@ -623,78 +667,35 @@ class TestTheatreTask(TaskTestCase):
         self.assertFalse(task.same_stage_text('开启第二试炼', '第一试炼'))
 
     def test_first_stage_never_triggers_a_switch(self):
-        """第一层只当基准点：怎么读都不算切层（第一层不重置）。"""
+        """第一层只当基准点：怎么读都不算切层（所以第一层不会执行移动/复位配置）。"""
         task = self.task
         task.reset_stage_detector()
-        task.stage_index = 1
         for text in ('开启第一试炼', '第一试炼', '第一试炼', '第一试炼', '试炼', None):
             self.assertFalse(task.update_stage_text(text), f'{text} 不该触发切层')
-        self.assertEqual(task.stage_index, 1, '没确认切层就不该加层数')
 
-    def test_stage_index_counts_layers_in_a_stage(self):
-        """关号每确认变一次就加一层，用来判断"是不是最后一层（BOSS 层）"。"""
-        task = self.task
-        task.reset_stage_detector()
-        task.stage_index = 1
-        task.update_stage_text('第一试炼')                    # 第一层：只当基准点
-        for text in ('第二试炼', '第二试炼', '第二试炼'):
-            task.update_stage_text(text)
-        self.assertEqual(task.stage_index, 2)
+    def test_partial_read_does_not_shrink_the_baseline(self):
+        """半截读数（只认出「试炼」）不能把基准点缩成后缀，否则后面每次切层都会被吞掉。
 
-    def test_reset_happens_only_on_the_first_three_switches(self):
-        """一个关卡 5 层：只在第 1->2、2->3、3->4 层允许复位，切进第 5 层（BOSS）不允许。
-
-        复位角色在 BOSS 层会把角色传到场地外面。
+        实机踩过的坑：OCR 偶尔只认出「试炼」两个字，基准点被改写成「试炼」之后，
+        「第三试炼」「第四试炼」全都包含它 → 一局下来一次切层都没确认到，
+        层与层之间的移动/复位全没执行。
         """
         task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('wait_stage_ready', 'apply_afk_mode', 'stage_index', 'log_info')}
-        calls = []
-        try:
-            task.wait_stage_ready = lambda *a, **kw: True
-            task.apply_afk_mode = lambda **kw: calls.append((task.stage_index, kw.get('allow_reset')))
-            task.log_info = lambda *a, **kw: None
-            for layer in range(2, 6):               # 依次切到第 2、3、4、5 层
-                task.stage_index = layer
-                task.handle_stage_switch()
-            self.assertEqual(calls, [(2, True), (3, True), (4, True), (5, False)],
-                             '前三次切层允许复位，BOSS 层不允许')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
-
-    def test_boss_layer_skips_reset_but_still_walks_forward(self):
-        """BOSS 层：复位角色不生效（会传到场地外），但"向前走"照常生效。"""
-        task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('config', 'reset_and_transport', 'send_key', 'stage_index')}
-        keys = []
-        try:
-            task.stage_index = theatre_module.LAYERS_PER_STAGE
-            task.reset_and_transport = lambda: keys.append('reset')
-            task.send_key = lambda key, **kw: keys.append(f'{key} {kw.get("down_time")}')
-
-            task.config = {'挂机模式': '开局重置角色位置'}
-            task.apply_afk_mode(allow_reset=False)
-            self.assertEqual(keys, [], 'BOSS 层不做复位角色')
-
-            keys.clear()
-            task.config = {'挂机模式': '开局向前走', '开局向前走': 4}
-            task.apply_afk_mode(allow_reset=False)
-            self.assertEqual(keys, ['w 4'], 'BOSS 层的"向前走"要照常走')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
+        task.reset_stage_detector()
+        task.update_stage_text('第一试炼')
+        self.assertFalse(task.update_stage_text('试炼'), '半截读数算同一层')
+        self.assertEqual(task.stage_text, '第一试炼', '基准点不能被半截读数缩短')
+        self.assertFalse(task.update_stage_text('第三试炼'), '和基准点是不同层，要开始计数')
+        self.assertFalse(task.update_stage_text('第三试炼'))
+        self.assertTrue(task.update_stage_text('第三试炼'), '连续 3 次就该确认切层')
 
     def test_unlock_prefix_transition_is_not_a_switch(self):
         """走位态「开启第一试炼」-> 开战态「第一试炼」不该触发切层。"""
         task = self.task
         task.reset_stage_detector()
-        task.stage_index = 1
         self.assertFalse(task.update_stage_text('开启第一试炼'))
         for _ in range(5):
             self.assertFalse(task.update_stage_text('第一试炼'), '开战那一下不是切层')
-        self.assertEqual(task.stage_index, 1)
 
     def test_switch_needs_three_consecutive_reads(self):
         """文字先变、层后切，中间有半截读数：连续 3 次读到同一个新关号才算切层。"""
@@ -715,97 +716,6 @@ class TestTheatreTask(TaskTestCase):
         task.update_stage_text('第一试炼')
         for text in ('第二试炼', '第三试炼', '第二试炼', '第三试炼', None, '第二试炼'):
             self.assertFalse(task.update_stage_text(text))
-
-    def test_fight_returns_true_on_stage_switch(self):
-        """挂机循环里读到切层就返回 True（交给 handle_in_mission 去处理这一关的开头）。"""
-        task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('find_one', 'in_combat_screen', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'random_walk_tick')}
-        texts = ['第一试炼', '第一试炼', '第二试炼', '第二试炼', '第二试炼']
-        try:
-            task.find_one = lambda *a, **kw: None
-            task.in_combat_screen = lambda: True
-            task.skill_tick = lambda: None
-            task.log_info = lambda *a, **kw: None
-            task.sleep = lambda seconds: None
-            task.random_walk_tick = lambda: None
-            task.reset_stage_detector()
-            task.read_stage_text = lambda: texts.pop(0) if texts else None
-            self.assertTrue(task.fight_until_result(), '连续 3 次第二试炼就返回 True')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
-
-    def test_stage_ready_only_waits_for_red(self):
-        """文字确认变化后只等一件事：目标栏变红（新一层开打）就往下走。
-
-        不等"先离开红色"：文字变的时候菱形多半已经是红的了，多等一段反而白等。
-        """
-        task = self.task
-        original = {name: getattr(task, name) for name in ('wait_until', 'is_in_combat')}
-        seen = []
-        try:
-            task.is_in_combat = lambda: 'red'
-            task.wait_until = lambda condition, **kw: seen.append((condition(), kw.get('time_out'))) or True
-            self.assertTrue(task.wait_stage_ready())
-            self.assertEqual(seen, [('red', theatre_module.STAGE_SWITCH_TIME_OUT)],
-                             '只等"是红的"这一件事')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
-
-    def test_stage_ready_timeout_only_warns(self):
-        """等满上限还不红只是记一条警告，不报错、也不挡后面的处理。"""
-        task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('wait_until', 'is_in_combat', 'log_warning')}
-        warnings = []
-        try:
-            task.is_in_combat = lambda: False
-            task.wait_until = lambda condition, **kw: False
-            task.log_warning = lambda message, *a, **kw: warnings.append(message)
-            self.assertFalse(task.wait_stage_ready())
-            self.assertEqual(len(warnings), 1, '超时要记一条警告')
-            self.assertIn('还没变红', warnings[0])
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
-
-    def test_stage_switch_waits_then_applies_afk_mode(self):
-        """切层：等动画收尾 -> 马上按挂机模式处理角色位置。
-
-        不按 F、不走位，也不动技能计时器 —— 技能节奏是全局的，切层重新武装它会把
-        长频率技能（比如终结技）在每一层开头强行插一次。
-        """
-        task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('wait_stage_ready', 'apply_afk_mode', 'walk_and_interact', 'send_key',
-                     'skill_tick', 'log_info', 'stage_index')}
-        events = []
-        keys = []
-
-        def fake_tick():
-            pass
-
-        fake_tick.reset = lambda: events.append('skill_reset')
-        try:
-            task.stage_index = 2
-            task.wait_stage_ready = lambda *a, **kw: events.append('wait_ready') or True
-            task.apply_afk_mode = lambda **kw: events.append('afk_mode')
-            task.walk_and_interact = lambda: events.append('walk')
-            task.send_key = lambda key, **kw: keys.append(key)
-            task.skill_tick = fake_tick
-            task.log_info = lambda *a, **kw: None
-            task.reset_stage_detector()
-            task.update_stage_text('第一试炼')
-            task.handle_stage_switch()
-            self.assertEqual(events, ['wait_ready', 'afk_mode'], '等动画 -> 处理位置')
-            self.assertEqual(keys, [], '切层不按 F')
-            self.assertIsNone(task.stage_text, '切层处理完检测要归零，下一层重新取基准点')
-        finally:
-            for name, value in original.items():
-                setattr(task, name, value)
 
     def test_advance_failed_does_not_give_up(self):
         """戏剧里没有「放弃挑战」：自动前进到开战超时只记日志继续挂机，不去点放弃。"""
