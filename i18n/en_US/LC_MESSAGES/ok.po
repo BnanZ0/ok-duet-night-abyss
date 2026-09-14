@@ -411,6 +411,9 @@ msgstr "Auto-run Lv.30/65 Demon's Wedge"
 msgid "自动70级皎皎币本"
 msgstr "Auto-run Lv.70 Jiao Jiao Coin dungeon"
 
+msgid "自动前进到开战"
+msgstr "Advance automatically until combat starts"
+
 msgid "自动勘察"
 msgstr "Auto Survey"
 

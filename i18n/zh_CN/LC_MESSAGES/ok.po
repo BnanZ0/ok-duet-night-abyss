@@ -408,6 +408,9 @@ msgstr ""
 msgid "自动70级皎皎币本"
 msgstr ""
 
+msgid "自动前进到开战"
+msgstr ""
+
 msgid "自动勘察"
 msgstr ""
 

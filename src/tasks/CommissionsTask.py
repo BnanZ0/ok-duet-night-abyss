@@ -23,6 +23,11 @@ from src.tasks.config.CommissionConfig import (
 )
 from src.tasks.config.CommissionSkillConfig import CommissionSkillConfig
 
+# 「自动前进到开战」的最长时间（秒）：走这么久还没进战斗就放弃重开
+AUTO_ADVANCE_TIME_OUT = 20
+# 检测到进入战斗后仍继续前进的秒数：战斗判据出现得比"走进交战区"早一点
+AUTO_ADVANCE_EXTRA_TIME = 2
+
 
 class Mission(Enum):
     START = 1
@@ -40,6 +45,9 @@ class CommissionsTask(BaseDNATask):
         self.mission_status = None
         self.action_timeout = 15
         self.wave_future = None
+        # 有没有被注入录制走位（`move_on_begin` 要判断它）。半自动任务会覆盖这个值，
+        # 自动驱离没有录制机制，保留这里的默认空实现。
+        self.external_movement = _default_movement
 
     @cached_property
     def commission_config(self):
@@ -65,6 +73,79 @@ class CommissionsTask(BaseDNATask):
             "超时时间": "超时后将重启任务",
         })
 
+    def setup_mission_start_config(self):
+        """开局挂机配置。定义只有这一份，手动半自动任务和自动驱离共用。"""
+        self._mission_started = False
+        self.default_config.update({
+            "随机游走": False,
+            "挂机模式": "开局重置角色位置",
+            "开局向前走": 0.0,
+        })
+        self.config_description.update({
+            "随机游走": "是否在任务中随机移动",
+            "开局向前走": "开局向前走几秒",
+        })
+        self.config_type["挂机模式"] = {
+            "type": "drop_down",
+            "options": ["开局重置角色位置", "开局向前走", "自动前进到开战"],
+        }
+
+    def is_in_combat(self):
+        """进入战斗的判据：任务信息栏出现波次「x/y」。
+
+        子任务有更贴合的信号（血清、血条）时各自覆盖。
+        """
+        self.get_wave_info()
+        return self.current_wave != -1
+
+    def advance_until_combat(self):
+        """按住 W 一直前进到进入战斗为止，再往前多走一小段，超时就用 ESC 菜单放弃并重开。
+
+        目标点就在正前方、只有距离不定的副本用这个模式，不用配时长。战斗判据出现时
+        人往往还差一点才走进交战区，所以判据成立后再走 AUTO_ADVANCE_EXTRA_TIME 秒。
+        失败走 give_up_mission() 而不是只开 ESC 菜单：菜单开着时 in_team() 仍为真，
+        主循环的 handle_mission_interface 会直接 return，菜单永远没人点。
+        """
+        self.send_key_down("w")
+        try:
+            deadline = time.time() + AUTO_ADVANCE_TIME_OUT
+            while time.time() < deadline:
+                self.next_frame()
+                if self.is_in_combat():
+                    self.log_info(f"已进入战斗，再前进 {AUTO_ADVANCE_EXTRA_TIME} 秒")
+                    # 多走这一段时继续取帧，松手时手里的画面是新的
+                    extra_deadline = time.time() + AUTO_ADVANCE_EXTRA_TIME
+                    while time.time() < extra_deadline:
+                        self.next_frame()
+                    return True
+            self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
+            self.give_up_mission()
+            return False
+        finally:
+            self.send_key_up("w")
+
+    def move_on_begin(self):
+        """开局处理：复位角色位置 / 向前走几秒 / 前进到进入战斗。每次进局内只做一次。
+
+        返回 False 表示这次没能开局成功（已经放弃并退出副本），调用方不要继续
+        跑局内逻辑。被全自动任务注入录制走位时整段跳过 —— 那时起点由录制路线
+        决定，开局前进会把路线的起点带偏。
+        """
+        if self._mission_started or self.external_movement is not _default_movement:
+            return True
+        self._mission_started = True
+        mode = self.config.get("挂机模式")
+        if mode == "开局重置角色位置":
+            self.reset_and_transport()
+            # 防卡墙
+            self.send_key("w", down_time=0.5)
+        elif mode == "开局向前走":
+            if (walk_sec := self.config.get("开局向前走", 0)) > 0:
+                self.send_key("w", down_time=walk_sec)
+        elif mode == "自动前进到开战":
+            return self.advance_until_combat()
+        return True
+
     # ------------------------------------------------------------------
     # 界面判据（唯一出处 src/ui/Defs.py）
     #   命名规则：find_<界面>_<元素>；判据命中 == 当前在这个界面上
@@ -80,6 +161,14 @@ class CommissionsTask(BaseDNATask):
     def find_start_btn(self, threshold=0, box=None, template=None):
         """开始界面的「开始」按钮（新版只有一个位置，不再分 bottom/big）。"""
         return self.find_ui(Ui.START_SCREEN_START, threshold=threshold, box=box, template=template)
+
+    def find_start_btn2(self, threshold=0):
+        """另一套布局的开始界面「开始」按钮（◯ 图标位置不同，图标模板复用）。"""
+        return self.find_ui(Ui.START_SCREEN_START_2, threshold=threshold)
+
+    def find_start_interface(self, threshold=0):
+        """开始界面 —— 两套布局任意一套命中都算。"""
+        return self.find_start_btn(threshold=threshold) or self.find_start_btn2(threshold=threshold)
 
     def find_manual_select_btn(self, threshold=0):
         """委托手册弹窗（用 ⊘ 不使用当判据）。"""
@@ -161,7 +250,7 @@ class CommissionsTask(BaseDNATask):
         clicked = False
 
         while time.time() < deadline:
-            if self.find_start_btn():
+            if self.find_start_interface():
                 self.click_ui_coord(COORD.START_SCREEN_BTN, name="start_mission",
                                     after_sleep=0.2, use_safe_move=True, safe_move_box=box)
                 clicked = True
@@ -203,7 +292,7 @@ class CommissionsTask(BaseDNATask):
 
     def give_up_mission(self, timeout=0):
         def is_mission_start_iface():
-            return self.find_start_btn() or self.find_action_dialog_continue() or self.find_esc_menu()
+            return self.find_start_interface() or self.find_action_dialog_continue() or self.find_esc_menu()
 
         action_timeout = self.action_timeout if timeout == 0 else timeout
 
@@ -564,8 +653,8 @@ class CommissionsTask(BaseDNATask):
             return self.get_return_status()
 
         # 优先级 3：开始 / 再次进行 / 继续 / 放弃
-        # 「再次进行」只在结算界面出现，那里 find_start_btn() 不命中，必须显式带上
-        if self.find_start_btn() or self.find_result_again_btn():
+        # 「再次进行」只在结算界面出现，那里开始界面判据不命中，必须显式带上
+        if self.find_start_interface() or self.find_result_again_btn():
             self.log_info("处理任务界面: 开始任务")
             self.start_mission()
             self.mission_status = Mission.START

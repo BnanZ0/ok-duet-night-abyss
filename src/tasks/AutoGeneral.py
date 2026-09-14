@@ -24,6 +24,7 @@ class AutoGeneral(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.VIEW
 
         self.setup_commission_config()
+        self.setup_mission_start_config()
         keys_to_remove = ["超时时间"]
         for key in keys_to_remove:
             self.default_config.pop(key, None)
@@ -91,7 +92,8 @@ class AutoGeneral(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         while True:
             if self.in_team():
-                self.handle_in_mission()
+                if self.move_on_begin():
+                    self.handle_in_mission()
             else:
                 if self.config.get("启动机关解锁", False):
                     self.maze_task.run()
@@ -113,6 +115,7 @@ class AutoGeneral(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def init_all(self):
         self.init_for_next_round()
         self.current_round = 0
+        self._mission_started = False
 
     def init_for_next_round(self):
         self.init_runtime_state()

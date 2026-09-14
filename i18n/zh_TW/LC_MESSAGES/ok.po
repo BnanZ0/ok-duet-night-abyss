@@ -411,6 +411,9 @@ msgstr "自動30/65級魔之楔本"
 msgid "自动70级皎皎币本"
 msgstr "自動70級皎皎幣本"
 
+msgid "自动前进到开战"
+msgstr "自動前進到開戰"
+
 msgid "自动勘察"
 msgstr "自動勘察"
 

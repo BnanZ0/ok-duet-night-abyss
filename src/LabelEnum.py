@@ -38,6 +38,7 @@ class LabelEnum(str, Enum):
     serum_icon = 'serum_icon'
     setting_other = 'setting_other'
     start_screen_start_btn = 'start_screen_start_btn'
+    start_screen_start_btn2 = 'start_screen_start_btn2'
     suyi_q_off = 'suyi_q_off'
     suyi_q_on = 'suyi_q_on'
     track_point = 'track_point'

@@ -411,6 +411,9 @@ msgstr "自動Lv.30/65魔の楔"
 msgid "自动70级皎皎币本"
 msgstr "自動Lv.70皎皎コインダンジョン"
 
+msgid "自动前进到开战"
+msgstr "自動で戦闘開始まで前進"
+
 msgid "自动勘察"
 msgstr "自動調査"
 

@@ -16,6 +16,7 @@ REF_HEIGHT = 900
 class Ui:
     """界面判据 label 名。"""
     START_SCREEN_START = 'start_screen_start_btn'
+    START_SCREEN_START_2 = 'start_screen_start_btn2'
     MANUAL_SELECT_NOT_USE = 'manual_select_not_use'
     ACTION_DIALOG_RETREAT = 'action_dialog_retreat'
     ACTION_DIALOG_CONTINUE = 'action_dialog_continue'
@@ -32,6 +33,9 @@ DISCRIMINATORS = {
     Ui.START_SCREEN_START: (
         (1262, 780, 1322, 850), 'start_screen',
         '开始/选择密函 按钮左侧 ◯ 图标 -> 开始界面（6 个入口共用，含"多一行内容"的 10px 下移）'),
+    Ui.START_SCREEN_START_2: (
+        (948, 781, 996, 837), 'start_screen',
+        '另一套开始界面布局的 ◯ 图标（x963,y796）-> 开始界面；图标与 START_SCREEN_START 同一个，只是位置不同'),
     Ui.MANUAL_SELECT_NOT_USE: (
         (497, 362, 590, 456), 'manual_select',
         '委托手册弹窗第 1 槽 ⊘ 图标 -> 委托手册弹窗（双按钮/单按钮两套布局都有）'),

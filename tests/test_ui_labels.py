@@ -2,10 +2,11 @@
 import re
 import unittest
 
+import src.tasks.CommissionsTask as commissions_module
 from src.config import config
 from ok.test.TaskTestCase import TaskTestCase
 
-from src.tasks.CommissionsTask import CommissionsTask, normalize_ocr_scale
+from src.tasks.CommissionsTask import CommissionsTask, _default_movement, normalize_ocr_scale
 from src.tasks.config.CommissionConfig import LETTER_HANDLE_AUTO_SELECT_FIRST
 from src.dna_ui.Defs import COORD, DISCRIMINATORS, REWARD_COUNT_BOX, REWARD_SELECTED_BOX
 
@@ -66,6 +67,44 @@ class TestUiLabels(TaskTestCase):
 
     def test_start_btn_letter(self):
         self._check('start_screen_letter.png', self.task.find_start_btn)
+
+    # ---- 开始界面：另一套布局（◯ 图标位置不同，图标模板复用）----
+
+    def test_start_btn2_other_layout(self):
+        """另一套布局只有第 2 个搜索框命中，第 1 个不该命中。
+
+        余量（离线实测）：框2 在新布局 0.9138、旧布局 0.2005；
+        框1 在旧布局 1.0000、新布局 0.1765。两套布局不会互相串味。
+        """
+        self._check('start_screen_other_layout.png', self.task.find_start_btn2)
+        self._check('start_screen_other_layout.png', self.task.find_start_btn, expected=False)
+
+    def test_start_interface_covers_both_layouts(self):
+        """两套布局的 `find_start_interface` 都要命中，旧的 6 张一个不能少。"""
+        for shot in ('start_screen_other_layout.png', 'start_screen_letter.png',
+                     'start_screen_explore_attr.png', 'start_screen_survey.png',
+                     'start_screen_defence.png', 'start_screen_hedge.png',
+                     'start_screen_expel.png'):
+            self._check(shot, self.task.find_start_interface)
+
+    def test_start_btn2_not_on_other_screens(self):
+        """第 2 个搜索框只在另一套开始界面上命中，其余 26 张都不能命中。"""
+        not_start2 = (
+            'start_screen_letter.png', 'start_screen_explore_attr.png', 'start_screen_survey.png',
+            'start_screen_defence.png', 'start_screen_hedge.png', 'start_screen_expel.png',
+            'manual_select_from_start.png', 'manual_select_after_result.png',
+            'manual_select_after_comm.png', 'manual_select_next_round.png',
+            'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'letter_select_from_start.png', 'letter_select_from_ingame.png',
+            'letter_select_after_result.png', 'letter_reward.png',
+            'result_explore.png', 'result_defence.png', 'result_expel.png',
+            'result_commission.png', 'result_letter.png',
+            'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
+            'hud_explore_round1.png',
+        )
+        self.assertEqual(len(not_start2), 26)
+        for shot in not_start2:
+            self._check(shot, self.task.find_start_btn2, expected=False)
 
     # ---- 委托手册弹窗 ----
 
@@ -357,6 +396,94 @@ class TestUiLabels(TaskTestCase):
 
     def test_settings_other_is_not_reset_confirm(self):
         self._check('settings_other.png', self.task.find_reset_confirm, expected=False)
+
+    # ---- 开局处理（挂机模式）：每次进局内一次，且被录制走位驱动时整段跳过 ----
+
+    def test_move_on_begin(self):
+        """钉死开局处理的四套判据。
+
+        1) 默认配置「开局重置角色位置」-> 调一次复位并补 0.5s 的 w 防卡墙
+        2) 「开局向前走 N 秒」-> 只按一次 w，时长就是配置值
+        3) 「自动前进到开战」-> 按住 w 前进到 is_in_combat() 为真为止，命中后还要
+           再走 AUTO_ADVANCE_EXTRA_TIME 秒才松手；一直不进战斗就走满
+           AUTO_ADVANCE_TIME_OUT 秒并放弃重开，返回 False 让调用方跳过局内逻辑
+        4) 被注入录制走位（`external_movement` 换掉）-> 整段跳过。
+           这条是"全自动执行逻辑完全不受影响"的保证：此时起点由录制路线决定，
+           开局前进 / 复位传送会把路线起点带偏。
+        """
+        task = self.task
+        names = ('config', 'external_movement', 'reset_and_transport', 'send_key',
+                 'send_key_down', 'send_key_up', 'give_up_mission', 'next_frame', 'is_in_combat')
+        original = {name: getattr(task, name) for name in names}
+        original_time = commissions_module.time
+        clock = {'now': 0.0}
+
+        def fake_time():
+            # 每次调用前进 1 秒：前进循环跑满 AUTO_ADVANCE_TIME_OUT 次就自然超时
+            clock['now'] += 1.0
+            return clock['now']
+
+        def run_case(挂机模式, config=0.0, external=False, started=False, combat_at=1):
+            calls = []
+            task.config = {'挂机模式': 挂机模式, '开局向前走': config}
+            # 注入录制走位时 config 走的是合并缓存，这里直接给同一份配置；
+            # move_on_begin 只看 external_movement，不看 config 从哪来
+            task.external_movement = object() if external else _default_movement
+            task._mission_started = started
+            task.reset_and_transport = lambda: calls.append('reset')
+            task.send_key = lambda key, down_time=0: calls.append('w(%s)' % down_time)
+            task.send_key_down = lambda key: calls.append('w down')
+            task.send_key_up = lambda key: calls.append('w up')
+            task.give_up_mission = lambda: calls.append('give_up')
+            task.next_frame = lambda: calls.append('frame')
+            probes = []
+
+            def is_in_combat():
+                probes.append(1)
+                hit = len(probes) >= combat_at
+                if hit:
+                    calls.append('combat')
+                return hit
+
+            task.is_in_combat = is_in_combat
+            result = task.move_on_begin()
+            return calls, result
+
+        def movement(events):
+            """只看按键/放弃这类动作，忽略取帧和战斗判据探测。"""
+            return [event for event in events if event not in ('frame', 'combat')]
+
+        fake_time_module = type('FakeTime', (), {'time': staticmethod(fake_time)})
+        try:
+            commissions_module.time = fake_time_module
+            self.assertEqual(run_case('开局重置角色位置', 0),
+                             (['reset', 'w(0.5)'], True), '复位模式应复位并补 0.5s 防卡墙')
+            self.assertEqual(run_case('开局向前走', 2.5), (['w(2.5)'], True),
+                             '向前走模式应只按一次 w')
+            self.assertEqual(run_case('开局向前走', 0), ([], True), '向前走 0 秒应什么都不做')
+
+            events, result = run_case('自动前进到开战', combat_at=3)
+            self.assertEqual(movement(events), ['w down', 'w up'], '前进到进入战斗就停，不该放弃')
+            self.assertTrue(result)
+            # 命中判据后还要继续走一段才松手（再多取一帧就是"多走了"的证据）
+            hit = events.index('combat')
+            self.assertEqual(events[hit + 1], 'frame', '进入战斗后应继续前进一小段')
+            self.assertEqual(events[-1], 'w up', '不管成功失败都要松开 w')
+
+            events, result = run_case('自动前进到开战', combat_at=9999)
+            self.assertEqual(movement(events), ['w down', 'give_up', 'w up'],
+                             '一直不进战斗就该走满超时并放弃重开')
+            self.assertNotIn('combat', events, '走满超时说明判据一次都没命中')
+            self.assertFalse(result, '放弃重开后调用方不该继续跑局内逻辑')
+
+            self.assertEqual(run_case('开局重置角色位置', 0, external=True), ([], True),
+                             '被注入录制走位时不该做任何开局处理')
+            self.assertEqual(run_case('开局重置角色位置', 0, started=True), ([], True),
+                             '同一次进局内只处理一次')
+        finally:
+            commissions_module.time = original_time
+            for name, value in original.items():
+                setattr(task, name, value)
 
 
 if __name__ == '__main__':

@@ -179,24 +179,15 @@
             "width": 1600,
             "date_captured": null,
             "id": 19
+        },
+        {
+            "id": 21,
+            "file_name": "images/0.png",
+            "width": 1600,
+            "height": 900
         }
     ],
     "annotations": [
-        {
-            "id": 0,
-            "image_id": 0,
-            "category_id": 1,
-            "bbox": [
-                1277,
-                805,
-                29,
-                30
-            ],
-            "area": 870,
-            "iscrowd": 0,
-            "ignore": 0,
-            "segmentation": []
-        },
         {
             "id": 1,
             "image_id": 1,
@@ -825,6 +816,32 @@
             ],
             "area": 3375,
             "iscrowd": 0
+        },
+        {
+            "id": 44,
+            "image_id": 0,
+            "category_id": 1,
+            "bbox": [
+                1277,
+                805,
+                29,
+                30
+            ],
+            "area": 870,
+            "iscrowd": 0
+        },
+        {
+            "id": 45,
+            "image_id": 21,
+            "category_id": 42,
+            "bbox": [
+                963,
+                796,
+                33,
+                31
+            ],
+            "area": 1023,
+            "iscrowd": 0
         }
     ],
     "categories": [
@@ -1031,6 +1048,11 @@
         {
             "id": 41,
             "name": "reward_1",
+            "supercategory": ""
+        },
+        {
+            "id": 42,
+            "name": "start_screen_start_btn2",
             "supercategory": ""
         },
         {

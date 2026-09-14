@@ -21,6 +21,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.group_icon = FluentIcon.VIEW
 
         self.setup_commission_config()
+        self.setup_mission_start_config()
 
         self.config_description.update({
             "超时时间": "波次超时后将发出提示",
@@ -78,7 +79,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         while True:
             if self.in_team():
-                self.handle_in_mission()
+                if self.move_on_begin():
+                    self.handle_in_mission()
 
             _status = self.handle_mission_interface(stop_func=self.stop_func)
             if _status == Mission.START:
@@ -99,6 +101,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.init_for_next_round()
         self.skill_tick.reset()
         self.current_round = 0
+        self._mission_started = False
 
     def init_for_next_round(self):
         self.init_runtime_state()
