@@ -566,3 +566,33 @@ msgstr "遊戲內射擊時垂直靈敏度"
 
 msgid "自动苏乙终结技"
 msgstr "自動蘇乙終結技"
+
+msgid "开机关重试次数"
+msgstr "開機關重試次數"
+
+msgid "打几层"
+msgstr "打幾層"
+
+msgid "打几层，0 = 无限循环"
+msgstr "打幾層，0 = 無限循環"
+
+msgid "结算失败连续重试几次后报错停止"
+msgstr "結算失敗連續重試幾次後報錯停止"
+
+msgid "结算失败重试次数"
+msgstr "結算失敗重試次數"
+
+msgid "自动沉浸式戏剧"
+msgstr "自動沉浸式戲劇"
+
+msgid "走位/开机关连续失败几次后报错停止"
+msgstr "走位/開機關連續失敗幾次後報錯停止"
+
+msgid "重击"
+msgstr "重擊"
+
+msgid "重击按住左键多久(秒)"
+msgstr "重擊按住左鍵多久(秒)"
+
+msgid "重击长按时间"
+msgstr "重擊長按時間"

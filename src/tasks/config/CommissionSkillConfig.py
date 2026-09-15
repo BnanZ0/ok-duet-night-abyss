@@ -22,9 +22,14 @@ for n in range(1, 5):
     config_type.update({
         f"技能{n}": {
             "type": "drop_down",
-            "options": ["不使用", "战技", "Ctrl+战技（赛琪专属）", "终结技", "魔灵支援", "普攻", "自动苏乙终结技"],
+            "options": ["不使用", "战技", "Ctrl+战技（赛琪专属）", "终结技", "魔灵支援", "普攻", "重击", "自动苏乙终结技"],
         },
     })
+
+# 重击（长按左键）的时长，所有技能槽共用这一条：释放频率决定循环周期，
+# 这里决定周期里按多久。释放频率小于长按时间时就是无缝连续重击。
+default_config["重击长按时间"] = 1.5
+config_description["重击长按时间"] = "重击按住左键多久(秒)"
 
 class CommissionSkillConfig(BaseDNATask):
 

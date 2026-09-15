@@ -430,7 +430,7 @@ class TestUiLabels(TaskTestCase):
             # move_on_begin 只看 external_movement，不看 config 从哪来
             task.external_movement = object() if external else _default_movement
             task._mission_started = started
-            task.reset_and_transport = lambda: calls.append('reset')
+            task.reset_and_transport = lambda: calls.append('reset') or True
             task.send_key = lambda key, down_time=0: calls.append('w(%s)' % down_time)
             task.send_key_down = lambda key: calls.append('w down')
             task.send_key_up = lambda key: calls.append('w up')

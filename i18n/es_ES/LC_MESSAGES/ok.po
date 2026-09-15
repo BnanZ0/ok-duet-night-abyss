@@ -566,3 +566,33 @@ msgstr ""
 
 msgid "自动苏乙终结技"
 msgstr "Definitiva Suyi Automática"
+
+msgid "开机关重试次数"
+msgstr "Reintentos del mecanismo"
+
+msgid "打几层"
+msgstr "Pisos"
+
+msgid "打几层，0 = 无限循环"
+msgstr "Cuántos pisos jugar, 0 = infinito"
+
+msgid "结算失败连续重试几次后报错停止"
+msgstr "Detener con error tras este número de fallos consecutivos en el resultado"
+
+msgid "结算失败重试次数"
+msgstr "Reintentos en el resultado"
+
+msgid "自动沉浸式戏剧"
+msgstr "Teatro inmersivo automático"
+
+msgid "走位/开机关连续失败几次后报错停止"
+msgstr "Detener con error tras este número de fallos consecutivos de movimiento/mecanismo"
+
+msgid "重击"
+msgstr "Ataque fuerte"
+
+msgid "重击按住左键多久(秒)"
+msgstr "Cuánto mantener pulsado el botón izquierdo para el ataque fuerte (segundos)"
+
+msgid "重击长按时间"
+msgstr "Duración del ataque fuerte"

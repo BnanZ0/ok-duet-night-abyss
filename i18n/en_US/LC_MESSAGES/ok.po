@@ -566,3 +566,33 @@ msgstr ""
 
 msgid "自动苏乙终结技"
 msgstr "Auto Suyi Ultimate"
+
+msgid "开机关重试次数"
+msgstr "Mechanism retries"
+
+msgid "打几层"
+msgstr "Floors"
+
+msgid "打几层，0 = 无限循环"
+msgstr "How many floors to run, 0 = endless"
+
+msgid "结算失败连续重试几次后报错停止"
+msgstr "Stop with an error after this many consecutive failures at the result screen"
+
+msgid "结算失败重试次数"
+msgstr "Result screen retries"
+
+msgid "自动沉浸式戏剧"
+msgstr "Auto Immersive Theatre"
+
+msgid "走位/开机关连续失败几次后报错停止"
+msgstr "Stop with an error after this many consecutive movement/mechanism failures"
+
+msgid "重击"
+msgstr "Heavy Attack"
+
+msgid "重击按住左键多久(秒)"
+msgstr "How long to hold the left mouse button for a heavy attack (seconds)"
+
+msgid "重击长按时间"
+msgstr "Heavy Attack Hold Time"

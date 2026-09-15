@@ -103,8 +103,8 @@ class CommissionsTask(BaseDNATask):
 
         目标点就在正前方、只有距离不定的副本用这个模式，不用配时长。战斗判据出现时
         人往往还差一点才走进交战区，所以判据成立后再走 AUTO_ADVANCE_EXTRA_TIME 秒。
-        失败走 give_up_mission() 而不是只开 ESC 菜单：菜单开着时 in_team() 仍为真，
-        主循环的 handle_mission_interface 会直接 return，菜单永远没人点。
+        超时走 `advance_failed()`：默认放弃并重开（而不是只开 ESC 菜单 —— 菜单开着时
+        in_team() 仍为真，主循环的 handle_mission_interface 会直接 return，菜单永远没人点）。
         """
         self.send_key_down("w")
         try:
@@ -118,11 +118,19 @@ class CommissionsTask(BaseDNATask):
                     while time.time() < extra_deadline:
                         self.next_frame()
                     return True
-            self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
-            self.give_up_mission()
-            return False
+            return self.advance_failed()
         finally:
             self.send_key_up("w")
+
+    def advance_failed(self):
+        """「自动前进到开战」走满 AUTO_ADVANCE_TIME_OUT 秒还没进战斗。
+
+        默认按委托的处理：放弃这次副本（返回 False）。
+        没有「放弃挑战」按钮的模式（沉浸式戏剧）自己覆盖这个方法。
+        """
+        self.log_info(f"前进 {AUTO_ADVANCE_TIME_OUT} 秒仍未进入战斗，重开任务")
+        self.give_up_mission()
+        return False
 
     def move_on_begin(self):
         """开局处理：复位角色位置 / 向前走几秒 / 前进到进入战斗。每次进局内只做一次。
@@ -134,9 +142,19 @@ class CommissionsTask(BaseDNATask):
         if self._mission_started or self.external_movement is not _default_movement:
             return True
         self._mission_started = True
+        return self.apply_afk_mode()
+
+    def apply_afk_mode(self):
+        """按「挂机模式」配置处理角色当前的位置：复位角色 / 向前走几秒 / 前进到开战。
+
+        原本只是 `move_on_begin()` 的开局处理，抽出来是因为沉浸式戏剧要在"层间切换"时再跑
+        一次同样的处理 —— 那边由任务自己调用，不走 `move_on_begin` 的一次性开关。
+        """
         mode = self.config.get("挂机模式")
         if mode == "开局重置角色位置":
-            self.reset_and_transport()
+            if not self.reset_and_transport():
+                # 复位失败时人已经不在队伍界面了，别让上层以为开局成功
+                return False
             # 防卡墙
             self.send_key("w", down_time=0.5)
         elif mode == "开局向前走":
@@ -550,6 +568,9 @@ class CommissionsTask(BaseDNATask):
                     self.get_current_char().send_geniemon_key()
                 elif skill == "普攻":
                     self.get_current_char().click()
+                elif skill == "重击":
+                    self.get_current_char().hold_normal_attack(
+                        self.commission_skill_config.get("重击长按时间", 1.5))
                 if after_sleep > 10:
                     self.log_onetime_info(f"检测到长延时：释放技能 {local_n} 后将等待 {after_sleep} 秒，可能影响脚本运行，请确认是否符合预期")
                 self.sleep(after_sleep)

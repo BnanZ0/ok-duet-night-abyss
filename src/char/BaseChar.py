@@ -130,6 +130,19 @@ class BaseChar:
             self.sleep(interval)
         self.sleep(after_sleep)
 
+    def hold_normal_attack(self, duration):
+        """长按普通攻击一段时间后松开，也就是重击。
+
+        Args:
+            duration (float): 长按的秒数。
+        """
+        self.task.mouse_down()
+        try:
+            self.task.sleep(max(0.0, float(duration)))
+        finally:
+            # 中途抛异常（角色死亡、任务被停止）也必须松开，否则鼠标一直按着
+            self.task.mouse_up()
+
     def sleep(self, sec, check_combat=True):
         """休眠指定时间 (代理到 task.sleep_check_combat)。
 
