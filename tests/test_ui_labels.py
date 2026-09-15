@@ -3,6 +3,9 @@ import re
 import unittest
 
 import src.tasks.CommissionsTask as commissions_module
+# 这里故意用带 OCR 的完整应用配置：本文件是唯一真跑 OCR 的测试（奖励持有数靠真 OCR 读，
+# 见 read_reward_counts）。其余测试文件都用 tests/test_support.py 里那份"不带 OCR"的配置，
+# 免得测试进程白白起一条 OCR 预热线程（实测它卡在 OpenVINO 的 ov.Core() 里会让进程退不出去）。
 from src.config import config
 from ok.test.TaskTestCase import TaskTestCase
 

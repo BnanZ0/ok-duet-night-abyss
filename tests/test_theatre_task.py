@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from ok import TaskDisabledException
-from src.config import config
+from tests.test_support import config
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.dna_ui.Defs import COORD

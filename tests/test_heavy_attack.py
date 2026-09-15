@@ -6,7 +6,7 @@ from ok import TaskDisabledException
 from ok.test.TaskTestCase import TaskTestCase
 
 from src.char.BaseChar import BaseChar
-from src.config import config
+from tests.test_support import config
 from src.tasks.AutoSkill import AutoSkill
 from src.tasks.config import CommissionSkillConfig
 
