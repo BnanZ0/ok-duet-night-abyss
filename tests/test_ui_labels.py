@@ -88,13 +88,14 @@ class TestUiLabels(TaskTestCase):
             self._check(shot, self.task.find_start_interface)
 
     def test_start_btn2_not_on_other_screens(self):
-        """第 2 个搜索框只在另一套开始界面上命中，其余 26 张都不能命中。"""
+        """第 2 个搜索框只在另一套开始界面上命中，其余 27 张都不能命中。"""
         not_start2 = (
             'start_screen_letter.png', 'start_screen_explore_attr.png', 'start_screen_survey.png',
             'start_screen_defence.png', 'start_screen_hedge.png', 'start_screen_expel.png',
             'manual_select_from_start.png', 'manual_select_after_result.png',
             'manual_select_after_comm.png', 'manual_select_next_round.png',
             'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'action_dialog_calamity.png',
             'letter_select_from_start.png', 'letter_select_from_ingame.png',
             'letter_select_after_result.png', 'letter_reward.png',
             'result_explore.png', 'result_defence.png', 'result_expel.png',
@@ -102,7 +103,7 @@ class TestUiLabels(TaskTestCase):
             'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
             'hud_explore_round1.png',
         )
-        self.assertEqual(len(not_start2), 26)
+        self.assertEqual(len(not_start2), 27)
         for shot in not_start2:
             self._check(shot, self.task.find_start_btn2, expected=False)
 
@@ -133,6 +134,16 @@ class TestUiLabels(TaskTestCase):
     def test_action_dialog_letter(self):
         self._check('action_dialog_letter.png', self.task.find_action_dialog_retreat)
         self._check('action_dialog_letter.png', self.task.find_action_dialog_continue)
+
+    def test_action_dialog_calamity(self):
+        """灾厄模式那套行动抉择弹窗（比常规布局上移 59px）也要能认出来。"""
+        self._check('action_dialog_calamity.png', self.task.find_action_dialog_continue)
+        self._check('action_dialog_calamity.png', self.task.find_action_dialog_continue2)
+
+    def test_action_dialog_continue_layouts_do_not_cross(self):
+        """两套「继续挑战」各自只在自己那套界面上命中。"""
+        self._check('action_dialog_calamity.png', self.task.find_action_dialog_continue_normal, expected=False)
+        self._check('action_dialog_explore.png', self.task.find_action_dialog_continue2, expected=False)
 
     # ---- 密函选择弹窗 ----
 
@@ -176,7 +187,7 @@ class TestUiLabels(TaskTestCase):
                                % (left + 1, right + 1, gap))
 
     def test_reward_selected_not_on_other_screens(self):
-        """奖励选中指示器只存在于密函奖励界面：其余 25 张截图上三个搜索框都必须不命中。
+        """奖励选中指示器只存在于密函奖励界面：其余 26 张截图上三个搜索框都必须不命中。
 
         余量（离线实测）：非奖励截图上最高只有 0.4188（start_screen_letter）。
         """
@@ -190,10 +201,11 @@ class TestUiLabels(TaskTestCase):
             'letter_select_from_start.png', 'letter_select_from_ingame.png',
             'letter_select_after_result.png',
             'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'action_dialog_calamity.png',
             'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
             'hud_explore_round1.png',
         )
-        self.assertEqual(len(not_reward), 25)
+        self.assertEqual(len(not_reward), 26)
         for shot in not_reward:
             self.set_image(IMAGES + shot)
             for index in (1, 2, 3):
@@ -220,7 +232,7 @@ class TestUiLabels(TaskTestCase):
                                % (left + 1, right + 1, gap))
 
     def test_reward_count_not_on_other_screens(self):
-        """三个 OCR 区域只在密函奖励界面有文字，其它 25 张截图上都不该读到数字。"""
+        """三个 OCR 区域只在密函奖励界面有文字，其它 26 张截图上都不该读到数字。"""
         not_reward = (
             'start_screen_expel.png', 'start_screen_letter.png', 'start_screen_defence.png',
             'start_screen_hedge.png', 'start_screen_survey.png', 'start_screen_explore_attr.png',
@@ -231,6 +243,7 @@ class TestUiLabels(TaskTestCase):
             'letter_select_from_start.png', 'letter_select_from_ingame.png',
             'letter_select_after_result.png',
             'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'action_dialog_calamity.png',
             'reset_confirm.png', 'esc_menu.png', 'settings_other.png',
             'hud_explore_round1.png',
         )
@@ -272,7 +285,7 @@ class TestUiLabels(TaskTestCase):
         self._check('hud_explore_round1.png', self.task.in_team, expected=True)
 
     def test_in_team_only_in_ingame(self):
-        """除局内 HUD 外，全部 25 张截图都必须判为**非局内**。
+        """除局内 HUD 外，全部 26 张截图都必须判为**非局内**。
 
         两个判据的余量（离线实测）：lv_text 局内 1.0000 / 反例最大 0.2322（阈值 0.8）；
         Q 键图标局内 1.0000 / 反例最大 0.4716（阈值 0.9）。
@@ -293,6 +306,7 @@ class TestUiLabels(TaskTestCase):
             'letter_select_from_start.png', 'letter_select_from_ingame.png',
             'letter_select_after_result.png', 'letter_reward.png',
             'action_dialog_explore.png', 'action_dialog_defence.png', 'action_dialog_letter.png',
+            'action_dialog_calamity.png',
             'reset_confirm.png',
             # 局内菜单 / 设置页（有 HUD 背景但已经不在战斗界面）
             'esc_menu.png', 'settings_other.png',

@@ -20,6 +20,7 @@ class Ui:
     MANUAL_SELECT_NOT_USE = 'manual_select_not_use'
     ACTION_DIALOG_RETREAT = 'action_dialog_retreat'
     ACTION_DIALOG_CONTINUE = 'action_dialog_continue'
+    ACTION_DIALOG_CONTINUE_2 = 'action_dialog_continue2'
     LETTER_SELECT_NOT_USE = 'letter_select_not_use'
     LETTER_REWARD_CONFIRM = 'letter_reward_confirm'
     ESC_MENU_SETTINGS = 'esc_menu_settings'
@@ -44,7 +45,11 @@ DISCRIMINATORS = {
         '「撤离」绿色门形图标 -> 行动抉择弹窗（3 个模式共用同一布局）'),
     Ui.ACTION_DIALOG_CONTINUE: (
         (998, 594, 1075, 650), 'action_dialog',
-        '「继续挑战」金色 ◯ 图标 -> 行动抉择弹窗'),
+        '「继续挑战」金色 ◯ 图标 -> 行动抉择弹窗（常规布局：探险 / 扼守 / 密函）'),
+    Ui.ACTION_DIALOG_CONTINUE_2: (
+        (999, 535, 1073, 588), 'action_dialog',
+        '「继续挑战」金色 ◯ 图标 -> 行动抉择弹窗（灾厄模式那套，比常规布局上移 59px；'
+        '单独一条标注方便版本更新后核对 UI 变化）'),
     Ui.LETTER_SELECT_NOT_USE: (
         (720, 340, 810, 465), 'letter_select',
         '卡牌矩阵第 1 格 ⊘ 图标 -> 密函选择（两套布局位置相同，是主判据）'),
@@ -157,7 +162,9 @@ class COORD:
     MANUAL_CONFIRM_NEXT = (759, 611)      # 单按钮版 [Space] 确认选择（局内继续轮次）
 
     # ---- 行动抉择弹窗 ----
+    # 两套：常规 / 灾厄（弹窗差 59px）。检测到哪一套就点哪一套的坐标。
     ACTION_CONTINUE = (1028, 622)
+    ACTION_CONTINUE_2 = (1026, 560)
     ACTION_RETREAT = (515, 619)
 
     # ---- 任务结算（不需要判据：靠 in_team() 真假 + 点了之后界面消失来推进）----

@@ -173,8 +173,25 @@ class CommissionsTask(BaseDNATask):
         return self.find_ui(Ui.ACTION_DIALOG_RETREAT, threshold=threshold)
 
     def find_action_dialog_continue(self, threshold=0):
-        """行动抉择弹窗的「继续挑战」（原 find_ingame_continue_btn）。"""
+        """行动抉择弹窗的「继续挑战」——两套任意一套命中都算（原 find_ingame_continue_btn）。"""
+        return (self.find_action_dialog_continue_normal(threshold=threshold)
+                or self.find_action_dialog_continue2(threshold=threshold))
+
+    def find_action_dialog_continue_normal(self, threshold=0):
+        """常规布局（探险 / 扼守 / 密函）的「继续挑战」。"""
         return self.find_ui(Ui.ACTION_DIALOG_CONTINUE, threshold=threshold)
+
+    def find_action_dialog_continue2(self, threshold=0):
+        """灾厄模式那套「继续挑战」：弹窗比常规布局上移 59px。
+
+        单独一条标注是为了版本更新后方便核对 UI 变化。
+        """
+        return self.find_ui(Ui.ACTION_DIALOG_CONTINUE_2, threshold=threshold)
+
+    def click_action_dialog_continue(self, name="continue_mission", after_sleep=0.25) -> None:
+        """点「继续挑战」：检测到哪一套就点哪一套的坐标。"""
+        coord = COORD.ACTION_CONTINUE_2 if self.find_action_dialog_continue2() else COORD.ACTION_CONTINUE
+        self.click_ui_coord(coord, name=name, after_sleep=after_sleep)
 
     def find_start_btn(self, threshold=0, box=None, template=None):
         """开始界面的「开始」按钮（新版只有一个位置，不再分 bottom/big）。"""
@@ -346,7 +363,7 @@ class CommissionsTask(BaseDNATask):
         action_timeout = self.action_timeout if timeout == 0 else timeout
         self.wait_until(
             condition=lambda: not self.find_action_dialog_continue() and not self.find_action_dialog_retreat(),
-            post_action=lambda: self.click_ui_coord(COORD.ACTION_CONTINUE, name="continue_mission", after_sleep=0.25),
+            post_action=self.click_action_dialog_continue,
             time_out=action_timeout,
             raise_if_not_found=True,
         )
