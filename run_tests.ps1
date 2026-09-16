@@ -1,4 +1,4 @@
-Get-ChildItem -Path ".\tests\*.py" | ForEach-Object {
+Get-ChildItem -Path ".\tests\*test*.py" | ForEach-Object {
   Write-Host "Running tests in $($_.FullName)"
   try {
       # Run the Python unittest command
