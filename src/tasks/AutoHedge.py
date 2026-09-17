@@ -26,6 +26,7 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.setup_commission_config()
         self.setup_mission_start_config()
+        self.setup_combat_detection_config()
         keys_to_remove = ["轮次"]
         for key in keys_to_remove:
             self.default_config.pop(key, None)
@@ -133,12 +134,13 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
     def handle_in_mission(self):
         self.update_mission_status()
-        if self.runtime_state["in_progress"]:
+        in_combat = self.runtime_state["in_progress"]
+        if in_combat:
             if self.runtime_state["start_time"] == 0:
                 self.runtime_state["start_time"] = time.time()
                 self.quick_assist_task.reset()
 
-            if not self.runtime_state["wait_next_round"] and time.time() - self.runtime_state[
+            if not self.runtime_state["wait_next_round"] and self.combat_detection_enabled() and time.time() - self.runtime_state[
                 "start_time"] >= self.config.get("超时时间", 120):
                 if self.external_movement is not _default_movement:
                     self.log_info("任务超时")
@@ -149,8 +151,6 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.soundBeep()
                     self.runtime_state["wait_next_round"] = True
 
-            if not self.runtime_state["wait_next_round"]:
-                self.skill_tick()
         else:
             if self.runtime_state["start_time"] > 0:
                 self.init_runtime_state()
@@ -164,6 +164,10 @@ class AutoHedge(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.log_info_notify("任务结束")
                     self.soundBeep()
             self.quick_assist_task.run()
+
+        # 战斗侦测关掉时不等避险进度，局内就按技能
+        if not self.runtime_state["wait_next_round"] and self.skills_ready(in_combat):
+            self.skill_tick()
 
     def handle_mission_start(self):
         if self.external_movement is not _default_movement:

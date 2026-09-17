@@ -596,3 +596,9 @@ msgstr "Cuánto mantener pulsado el botón izquierdo para el ataque fuerte (segu
 
 msgid "重击长按时间"
 msgstr "Duración del ataque fuerte"
+
+msgid "战斗侦测"
+msgstr "Detección de combate"
+
+msgid "如果某些特殊模式技能释放异常 尝试关掉"
+msgstr "Si las habilidades no se liberan bien en algunos modos especiales, prueba a desactivarlo"

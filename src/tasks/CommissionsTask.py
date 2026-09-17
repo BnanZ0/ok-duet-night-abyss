@@ -90,6 +90,36 @@ class CommissionsTask(BaseDNATask):
             "options": ["开局重置角色位置", "开局向前走", "自动前进到开战"],
         }
 
+    def setup_combat_detection_config(self):
+        """「战斗侦测」开关（有战斗判据的半自动任务共用）。
+
+        开（默认）：等各任务的战斗判据成立才按技能 —— 和以前完全一样。
+        关：只要在局内（且没停在菜单/确认弹窗上）就按技能。
+        """
+        self.default_config.update({
+            "战斗侦测": True,
+        })
+        self.config_description.update({
+            "战斗侦测": "如果某些特殊模式技能释放异常 尝试关掉",
+        })
+
+    def combat_detection_enabled(self) -> bool:
+        return bool(self.config.get("战斗侦测", True))
+
+    def skills_ready(self, in_combat: bool) -> bool:
+        """现在能不能按技能。
+
+        开「战斗侦测」时只认战斗判据，和改动前逐字等价（不做多余检测）；
+        关「战斗侦测」时不再等判据，只要在局内、没停在 ESC 菜单或确认弹窗上就按。
+        """
+        if in_combat:
+            return True
+        if self.combat_detection_enabled():
+            return False
+        if not self.in_team():
+            return False
+        return not (self.find_esc_menu() or self.find_reset_confirm())
+
     def is_in_combat(self):
         """进入战斗的判据：任务信息栏出现波次「x/y」。
 
