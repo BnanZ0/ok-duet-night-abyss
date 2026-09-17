@@ -20,6 +20,7 @@ class AutoExcavation(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.setup_commission_config()
         self.setup_mission_start_config()
+        self.setup_combat_detection_config()
         keys_to_remove = ["超时时间"]
         for key in keys_to_remove:
             self.default_config.pop(key, None)
@@ -82,11 +83,11 @@ class AutoExcavation(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.runtime_state = {"start_time": 0}
 
     def handle_in_mission(self):
-        if self.find_target_health_bar():
+        in_combat = bool(self.find_target_health_bar())
+        if in_combat:
             if self.runtime_state["start_time"] == 0:
                 self.runtime_state["start_time"] = time.time()
                 self.quick_assist_task.reset()
-            self.skill_tick()
         else:
             if self.runtime_state["start_time"] > 0:
                 if self.wait_until(lambda: self.find_target_health_bar(), time_out=2):
@@ -96,6 +97,10 @@ class AutoExcavation(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 if self.excavator_count < 3:
                     self.soundBeep(1)
             self.quick_assist_task.run()
+
+        # 战斗侦测关掉时不等目标血条，局内就按技能
+        if self.skills_ready(in_combat):
+            self.skill_tick()
 
     def handle_mission_start(self):
         self.log_info_notify("任务开始")

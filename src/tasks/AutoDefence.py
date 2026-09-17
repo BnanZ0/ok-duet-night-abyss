@@ -22,6 +22,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.setup_commission_config()
         self.setup_mission_start_config()
+        self.setup_combat_detection_config()
 
         self.config_description.update({
             "超时时间": "波次超时后将发出提示",
@@ -113,7 +114,8 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def handle_in_mission(self):
         """处理在副本中的逻辑"""
         self.get_wave_info()
-        if self.current_wave != -1:
+        in_combat = self.current_wave != -1
+        if in_combat:
             # 如果是新的波次，重置状态
             if self.current_wave != self.runtime_state["wave"]:
                 self.runtime_state.update(
@@ -121,7 +123,7 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.quick_assist_task.reset()
 
             # 检查波次是否超时
-            if not self.runtime_state["wait_next_wave"] and time.time() - self.runtime_state[
+            if not self.runtime_state["wait_next_wave"] and self.combat_detection_enabled() and time.time() - self.runtime_state[
                 "wave_start_time"] >= self.config.get("超时时间", 120):
                 if self.external_movement is not _default_movement:
                     self.log_info("任务超时")
@@ -132,14 +134,15 @@ class AutoDefence(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.soundBeep()
                     self.runtime_state["wait_next_wave"] = True
 
-            # 如果未超时，则使用技能
-            if not self.runtime_state["wait_next_wave"]:
-                self.skill_tick()
         else:
             if self.runtime_state["wave"] > 0:
                 self.init_runtime_state()
             # 如果不在战斗波次中，执行移动任务
             self.quick_assist_task.run()
+
+        # 战斗侦测关掉时不等波次，局内就按技能
+        if not self.runtime_state["wait_next_wave"] and self.skills_ready(in_combat):
+            self.skill_tick()
 
     def handle_mission_start(self):
         """处理任务开始的逻辑"""

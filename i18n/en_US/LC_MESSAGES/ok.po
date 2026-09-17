@@ -596,3 +596,9 @@ msgstr "How long to hold the left mouse button for a heavy attack (seconds)"
 
 msgid "重击长按时间"
 msgstr "Heavy Attack Hold Time"
+
+msgid "战斗侦测"
+msgstr "Combat detection"
+
+msgid "如果某些特殊模式技能释放异常 尝试关掉"
+msgstr "If skills are not released properly in some special modes, try turning this off"

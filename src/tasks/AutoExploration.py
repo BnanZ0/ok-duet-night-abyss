@@ -22,6 +22,7 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         self.setup_commission_config()
         self.setup_mission_start_config()
+        self.setup_combat_detection_config()
 
         self.config_description.update({
             '超时时间': '超时后将发出提示',
@@ -110,12 +111,13 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.runtime_state = {"start_time": 0, "wait_next_round": False}
 
     def handle_in_mission(self):
-        if self.find_serum():
+        in_combat = self.find_serum()
+        if in_combat:
             if self.runtime_state["start_time"] == 0:
                 self.runtime_state["start_time"] = time.time()
                 self.quick_assist_task.reset()
 
-            if not self.runtime_state["wait_next_round"] and time.time() - self.runtime_state["start_time"] >= self.config.get("超时时间", 120):
+            if not self.runtime_state["wait_next_round"] and self.combat_detection_enabled() and time.time() - self.runtime_state["start_time"] >= self.config.get("超时时间", 120):
                 if self.external_movement is not _default_movement:
                     self.log_info("任务超时")
                     self.give_up_mission()
@@ -125,12 +127,13 @@ class AutoExploration(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                     self.soundBeep()
                     self.runtime_state["wait_next_round"] = True
 
-            if not self.runtime_state["wait_next_round"]:
-                self.skill_tick()
         else:
             if self.runtime_state["start_time"] > 0:
                 self.init_runtime_state()
             self.quick_assist_task.run()
+
+        if not self.runtime_state["wait_next_round"] and self.skills_ready(in_combat):
+            self.skill_tick()
 
     def handle_mission_start(self):
         if self.external_movement is not _default_movement:
