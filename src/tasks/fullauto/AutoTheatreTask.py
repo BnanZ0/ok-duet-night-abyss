@@ -60,10 +60,16 @@ INTERACT_INTERVAL = 0.5
 FIGHT_TIME_OUT = 10
 # 点了「前往」/「再次挑战」之后等离开当前界面、等进关卡加载完成的上限
 LOAD_TIME_OUT = 30
-# 兜底：按 F 开战之后到结算页出现之前一律算战斗、从不停手（判据在实机上会闪，拿它控制节奏
-# 会让技能一顿一顿）。只有红菱形连续消失这么久（掉线、卡在读条、结算页被漏读后停在
-# "开启第 X 试炼"那一阶段）才算没进战斗：重开一局，退回去重走第 1 层的走位开机关。
+# 兜底：判据在实机上会闪，闪一下不算"没进战斗"。只有红菱形连续消失这么久（掉线、卡在读条、
+# 结算页被漏读后停在"开启第 X 试炼"那一阶段）才算没进战斗：重开一局，退回去重走第 1 层的走位开机关。
+# 技能不跟这个兜底走 —— 技能按 SKILL_STOP_DELAY 那条规则停手，见 tick_skills。
 NO_COMBAT_TIME_OUT = 30
+# 技能只在"确认真在战斗中"才按：红菱形连续消失超过这么久就停手（实机上判据的闪烁不到 1 秒，
+# 闪一下不算），停手一直持续到重新确认在战斗中为止 —— 中间隔着切层动画、结算页、加载画面。
+# 那些窗口里按出去的技能会被游戏缓冲到下一层（下一局）的开场：人物还没走位先放一个技能，
+# 苏乙终结技这种长动作一锁，复位/向前走整段被吃掉。取 2 秒：滤得掉闪烁，又足够在切层动画
+# 走完、执行「挂机模式」的移动之前把手停下。
+SKILL_STOP_DELAY = 2.0
 
 # ---- 切层检测（左上目标栏那行关号：「开启第一试炼」/「第一试炼」）----
 # 只拿 `theatre_stage` 的标注框当 OCR 区域，**不做模板匹配**：那行字是游戏文本，
@@ -86,6 +92,10 @@ LAYER_SWITCH_SETTLE = 1.5
 # 等满上限还不红（加载慢、掉线，或者结算页被漏读后停在新关卡的"开启第 X 试炼"阶段）只记一条
 # 警告，照常往下走；真的没进战斗由 NO_COMBAT_TIME_OUT 那条兜底重开。
 STAGE_RED_TIME_OUT = 15
+# 一个"还没确认的新关号"最多管技能总闸这么久：候选值要连续读到 STAGE_CONFIRM_COUNT 次才确认切层
+# （2~3 秒），confirm 之后就地清掉；但 OCR 抽风、卡在一个再也不重复的错读数上时它会一直挂着 ——
+# 不能让它把技能永远锁死（那会变成"整层一个技能都不放"），过期就当没读到。
+STAGE_PENDING_HOLD = 8.0
 
 
 class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
@@ -101,6 +111,9 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
     失败重试：走位/开机关连续失败、结算连续失败各自计数，配置 N 表示允许重试 N 次、
     第 N+1 次连续失败报错停止；中间成功一次就清零。
+
+    技能：只在目标栏菱形变红（真在打）期间释放。切层、结算、重开、走位之前都会关掉技能总闸
+    （见 `stop_skills`），免得按出去的技能被游戏缓冲到下一层（下一局）的开场、把走位吃掉。
     """
 
     def __init__(self, *args, **kwargs):
@@ -128,6 +141,10 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         })
 
         self.skill_tick = self.create_skill_ticker()
+        # 技能总闸（见 stop_skills / tick_skills）：默认开着，战斗判据连续消失超时，
+        # 或者走到切层/结算/重开/走位这些窗口才关上。
+        self.skills_stopped = False
+        self.combat_seen_at = time.time()
         # 云游戏实拍帧糊、模板分低，给足重试轮次
         self.action_timeout = 20
         self.current_floor = 0
@@ -184,6 +201,8 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     def init_all(self):
         self.load_char()
         self.skill_tick.reset()
+        self.skills_stopped = False
+        self.combat_seen_at = time.time()
         self.current_floor = 0
         self.interact_failures = 0
         self.no_combat_failures = 0
@@ -279,6 +298,8 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             # （那个配置只在层与层之间用）。判据刚出来时角色还在落地收尾，先稳一秒再走。
             self.wait_mission_loaded()
             self.sleep(FIRST_LAYER_SETTLE)
+            # 走位全程不许按技能：技能动作会把按下去的走位键吃掉
+            self.stop_skills('走位开机关')
             self.mission_started = True
             self.walk_and_interact()
             # 每一局都是从零开始打，技能计时器必须重新武装：`reset()` 让下一次 tick 立刻触发。
@@ -351,6 +372,7 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         重开会把关卡重新加载一遍，菜单/弹窗/加载画面都会盖掉目标栏判据，所以"先消失再回来"
         正好当重开完成的信号；万一它没消失（秒重开）也不会卡住，直接往下走。
         """
+        self.stop_skills('重新开始')
         start = time.time()
         while not self.find_one(ESC_RETRY):
             if time.time() - start > time_out:
@@ -378,13 +400,64 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             raise Exception('点了「重新开始」之后局内菜单一直没关掉，停止任务')
         self.wait_mission_loaded(time_out=load_time_out)
 
+    # ------------------------------------------------------------------
+    # 技能：只在真在打的时候放
+    # ------------------------------------------------------------------
+
+    def stop_skills(self, reason=None):
+        """关掉技能总闸：关掉之后 `tick_skills` 一律不按，直到重新确认在战斗中。
+
+        `create_skill_ticker` 的 tick 是同步的（按技能键和「释放后等待」都在一次调用里做完），
+        所以闸门一关就真的不会再按技能。已经在按的那一发收不回来，靠调用点留出的提前量
+        （切层提前 2~3 秒、结算页之后整段加载时间）等它的动作走完。
+        """
+        if self.skills_stopped:
+            return
+        self.skills_stopped = True
+        if reason:
+            self.log_info(f'停止释放技能：{reason}')
+        else:
+            self.log_debug('停止释放技能：战斗判据消失')
+
+    def tick_skills(self, in_combat):
+        """按技能 —— 只认"确认在战斗中"，不在战斗状态就停手。
+
+        `in_combat` 用主循环本轮开头那一次判定：切层那一轮里等目标栏变红花掉的时间不算数，
+        要等挂机移动做完、下一轮重新确认在战斗中才恢复按技能；关号已经读到新值时也不恢复
+        （层马上要切走，这一发会被缓冲到下一层）。
+
+        以前这里是无条件 `skill_tick()`：结算页被漏读、加载/切层这些"没在打"的帧上照样按技能，
+        那一下会被游戏缓冲到下一层（下一局）的开场 —— 人物还没走位先放一个技能，
+        苏乙终结技这种长动作一锁，复位/向前走整段被吃掉。
+        """
+        if in_combat:
+            self.combat_seen_at = time.time()
+            if self.skills_stopped and not self.stage_switch_pending():
+                self.skills_stopped = False
+                self.log_debug('恢复释放技能')
+        elif not self.skills_stopped and time.time() - self.combat_seen_at > SKILL_STOP_DELAY:
+            self.stop_skills()
+        if self.skills_stopped:
+            return
+        self.skill_tick()
+
+    def stage_switch_pending(self):
+        """读到了还没确认的新关号 —— 「文字先变、层后切」，这时候就该停技能了。
+
+        带时限（STAGE_PENDING_HOLD）：候选值只有读到另一个有效读数、或者确认切层之后才会清掉，
+        OCR 抽风卡在一个错读数上时它会一直挂着，不能拿它把技能永远锁死。
+        """
+        if self.stage_pending is None:
+            return False
+        return time.time() - self.stage_pending_at <= STAGE_PENDING_HOLD
+
     def fight_until_result(self):
         """挂机。返回 True = 结算页出现（这一局打完），False = 该重开一局。
 
-        进战斗之后**一律算战斗状态、从不停手**：判据在实机上会闪，拿它们控制"停不停手"
-        会让技能一顿一顿的。只有红菱形连续 NO_COMBAT_TIME_OUT 秒都不在（掉线、卡在读条、
-        结算页被漏读后停在"开启第 X 试炼"那一阶段）才算没进战斗 —— 重开一局，
-        退回第 1 层重新走位开机关。
+        红菱形闪一下不算"没进战斗"（判据在实机上会闪）：只有连续消失 NO_COMBAT_TIME_OUT 秒
+        （掉线、卡在读条、结算页被漏读后停在"开启第 X 试炼"那一阶段）才算没进战斗 ——
+        重开一局，退回第 1 层重新走位开机关。技能不跟这个兜底走：技能按 SKILL_STOP_DELAY
+        那条规则停手（见 `tick_skills`），切层/结算/加载期间一律不按。
 
         层与层之间（关号变了）就地处理：按「挂机模式」处理一次角色位置，然后接着挂。
         """
@@ -393,9 +466,11 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             if self.find_one(RESULT_WIN) or self.find_one(RESULT_FAIL):
                 return True
             if self.find_one(ESC_RETRY):
+                self.stop_skills('局内菜单被打开')
                 self.send_key("esc", after_sleep=0.5)
                 continue
-            if self.is_in_combat():
+            in_combat = self.is_in_combat()
+            if in_combat:
                 no_combat_since = None
                 self.no_combat_failures = 0
             elif no_combat_since is None:
@@ -408,7 +483,14 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                               f'（第 {self.no_combat_failures} 次）')
                 self.restart_in_mission()
                 return False
-            if self.update_stage_text(self.read_stage_text()):
+            # 关号读到新值（还没确认）就先停技能：比「确认切层」早 2~3 秒，
+            # 保证层真的切走、执行挂机移动之前手已经停下
+            stage_changed = self.update_stage_text(self.read_stage_text())
+            if self.stage_switch_pending():
+                self.stop_skills('关号已变（切层在即）')
+            if stage_changed:
+                # 确认切层：停技能 -> 等新一层变红 -> 稳一下 -> 做挂机移动，这一轮不再按技能
+                self.stop_skills('切层')
                 self.log_info('检测到切层，等目标栏变红（新一层真的开打）再处理角色位置')
                 if not self.wait_until(self.is_in_combat, time_out=STAGE_RED_TIME_OUT,
                                        raise_if_not_found=False):
@@ -417,7 +499,9 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
                 self.sleep(LAYER_SWITCH_SETTLE)
                 self.apply_afk_mode()
                 self.reset_stage_detector()
-            self.skill_tick()
+                # 移动刚做完这一轮不按技能：等下一轮重新确认在战斗中再说
+                in_combat = False
+            self.tick_skills(in_combat)
             self.sleep(0.2)
 
     # ------------------------------------------------------------------
@@ -428,6 +512,7 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         """每局开始（第 1 层按完 F）调用：第一次读到的关号只当基准点，不算切层。"""
         self.stage_text = None
         self.stage_pending = None
+        self.stage_pending_at = 0.0
         self.stage_pending_count = 0
         self.stage_next_ocr = 0.0
 
@@ -481,6 +566,7 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.stage_pending_count += 1
         else:
             self.stage_pending = text
+            self.stage_pending_at = time.time()     # 技能总闸只认新鲜候选项，见 stage_switch_pending
             self.stage_pending_count = 1
         if self.stage_pending_count < STAGE_CONFIRM_COUNT:
             return False
@@ -503,8 +589,13 @@ class AutoTheatreTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     # ------------------------------------------------------------------
 
     def handle_result(self):
-        """结算页：成功点「前往」进下一层，失败点「再次挑战」重来。返回是否该结束任务。"""
+        """结算页：成功点「前往」进下一层，失败点「再次挑战」重来。返回是否该结束任务。
+
+        点之前先把技能停掉：结算页被漏读时技能还在按，那一下会跟着点击一起被带进下一层的开场，
+        人物还没走位先放一个技能。
+        """
         self.mission_started = False
+        self.stop_skills('结算页')
         if self.find_one(RESULT_WIN):
             self.result_failures = 0
             self.current_floor += 1

@@ -323,6 +323,29 @@ class TestTheatreTask(TaskTestCase):
             for name, value in original.items():
                 setattr(task, name, value)
 
+    def test_result_click_stops_skills_first(self):
+        """点「前往」进下一层之前先把技能停掉：这一下点击不能跟着一个刚按出去的技能进下一局。
+
+        技能按战斗判据停手有 2 秒延迟，结算页被漏读时正好落在窗口里；所以点按钮之前
+        必须显式关闸（`stop_skills`），关掉之后要等下一层真的开打才恢复。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('config', 'find_one', 'click_ui_coord', 'wait_left_result',
+                     'mission_started', 'skills_stopped')}
+        stopped_at_click = []
+        try:
+            task.config = {'结算失败重试次数': 3, '打几层': 0}
+            task.find_one = lambda name, *a, **kw: 'box' if name == RESULT_WIN else None
+            task.click_ui_coord = lambda coord, **kw: stopped_at_click.append(task.skills_stopped)
+            task.wait_left_result = lambda *a, **kw: None
+            task.skills_stopped = False
+            self.assertFalse(task.handle_result())
+            self.assertEqual(stopped_at_click, [True], '点「前往」之前技能总闸必须已经关掉')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
     def test_floor_limit_stops_the_task(self):
         """「打几层」= 2：打完第 2 层就正常结束（停在结算页，不再点「前往」）。"""
         task = self.task
@@ -445,6 +468,7 @@ class TestTheatreTask(TaskTestCase):
             self.assertEqual(events, ['loaded', ('sleep', theatre_module.FIRST_LAYER_SETTLE), 'walk'],
                              '加载完 -> 稳 1 秒 -> 才开始走位')
             self.assertEqual(theatre_module.FIRST_LAYER_SETTLE, 1)
+            self.assertTrue(task.skills_stopped, '走位期间技能总闸必须关着（技能动作会吃掉走位键）')
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
@@ -461,7 +485,7 @@ class TestTheatreTask(TaskTestCase):
         original = {name: getattr(task, name) for name in
                     ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
                      'read_stage_text', 'restart_in_mission',
-                     'no_combat_failures')}
+                     'no_combat_failures', 'combat_seen_at')}
         original_time = theatre_module.time
         seq = list(in_combat_seq)
         logs, skills, restarts = [], [], []
@@ -487,6 +511,8 @@ class TestTheatreTask(TaskTestCase):
             task.read_stage_text = lambda: None
             task.restart_in_mission = lambda *args, **kwargs: restarts.append(1)
             task.no_combat_failures = 0
+            task.combat_seen_at = 0.0            # 和假时钟对齐，让"停止释放技能"的计时可算
+            task.skills_stopped = False
             theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
             return task.fight_until_result(), skills, logs, restarts
         finally:
@@ -512,14 +538,61 @@ class TestTheatreTask(TaskTestCase):
         self.assertEqual(logs, [], '挂机期间不该打日志')
         self.assertEqual(restarts, [], '闪一下不算"没进战斗"')
 
-    def test_fight_keeps_firing_without_red_until_timeout(self):
-        """红菱形不在也只管放技能，没到超时上限就不重开、不刷日志。"""
-        result, skills, logs, restarts = self._fight_case([False, False, False, True, True],
-                                                         exit_at=5, seconds_per_poll=2.0)
-        self.assertTrue(result)
-        self.assertEqual(len(skills), 4, '每一轮都要放技能')
-        self.assertEqual(logs, [], '没到超时上限就不该打日志')
-        self.assertEqual(restarts, [])
+    def test_fight_stops_skills_when_the_red_diamond_stays_away(self):
+        """红菱形连续消失超过 SKILL_STOP_DELAY 秒就停手，重新确认在战斗中才恢复。
+
+        停手是给"下一层/下一局的开场"留白：判据消失（切层动画、结算页、加载画面）期间按出去的
+        技能会被游戏缓冲到下一局开场，人物还没走位先放一个技能 —— 苏乙终结技那种长动作一锁，
+        复位/向前走整段被吃掉。闪一下不算（实机上判据的闪烁不到 1 秒），30 秒的"没进战斗"
+        兜底也不受影响。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
+                     'read_stage_text', 'restart_in_mission',
+                     'no_combat_failures', 'combat_seen_at', 'skills_stopped')}
+        original_time = theatre_module.time
+        clock = {'now': 100.0}
+        combat = {'state': True}
+        fired = []
+        states = [True, True] + [False] * 6 + [True, True]
+        polls = {'n': 0}
+
+        try:
+            def fake_find_one(name, *args, **kwargs):
+                return 'result' if polls['n'] >= len(states) and name == RESULT_WIN else None
+
+            def fake_is_in_combat():
+                if polls['n'] < len(states):
+                    combat['state'] = states[polls['n']]
+                return combat['state']
+
+            def fake_sleep(seconds):
+                polls['n'] += 1
+                clock['now'] += 0.5                     # 主循环 0.2 秒一轮，这里取 0.5 更好算
+
+            task.find_one = fake_find_one
+            task.is_in_combat = fake_is_in_combat
+            task.skill_tick = lambda: fired.append(combat['state'])
+            task.log_info = lambda *a, **kw: None
+            task.sleep = fake_sleep
+            task.read_stage_text = lambda: None
+            task.restart_in_mission = lambda *a, **kw: None
+            task.no_combat_failures = 0
+            task.combat_seen_at = 100.0
+            task.skills_stopped = False
+            task.reset_stage_detector()
+            theatre_module.time = type('FakeTime', (), {'time': staticmethod(lambda: clock['now'])})
+
+            self.assertTrue(task.fight_until_result())
+            # 前两轮在战斗里照常放；判据消失后 SKILL_STOP_DELAY（2 秒 = 4 轮）内还放，
+            # 再往后停手；判据回来才恢复。
+            self.assertEqual(fired, [True, True, False, False, False, False, True, True])
+            self.assertEqual(theatre_module.SKILL_STOP_DELAY, 2.0)
+        finally:
+            theatre_module.time = original_time
+            for name, value in original.items():
+                setattr(task, name, value)
 
     def test_fight_restarts_after_no_combat_timeout(self):
         """红菱形连续消失 NO_COMBAT_TIME_OUT 秒 = 没进战斗：重开一局，不报错。"""
@@ -717,6 +790,30 @@ class TestTheatreTask(TaskTestCase):
         task.update_stage_text('第一试炼')
         for text in ('第二试炼', '第三试炼', '第二试炼', '第三试炼', None, '第二试炼'):
             self.assertFalse(task.update_stage_text(text))
+
+    def test_stale_stage_candidate_cannot_lock_skills_forever(self):
+        """候选关号过期之后不再管技能总闸。
+
+        候选值只有读到另一个有效读数、或者确认切层之后才会清掉；OCR 卡在一个再也不重复的
+        错读数上时（连续 3 次确认不了），它会一直挂着 —— 拿它当"切层在即"会把技能锁死一整层。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in ('log_info',)}
+        original_time = theatre_module.time
+        clock = {'now': 1000.0}
+        try:
+            task.log_info = lambda *a, **kw: None
+            theatre_module.time = type('FakeTime', (), {'time': staticmethod(lambda: clock['now'])})
+            task.reset_stage_detector()
+            task.update_stage_text('第一试炼')                     # 基准点
+            task.update_stage_text('第二试炼')                     # 读到新关号：候选
+            self.assertTrue(task.stage_switch_pending(), '刚读到的新关号要停技能')
+            clock['now'] += theatre_module.STAGE_PENDING_HOLD + 0.1
+            self.assertFalse(task.stage_switch_pending(), '卡住的候选不许永远锁死技能')
+        finally:
+            theatre_module.time = original_time
+            for name, value in original.items():
+                setattr(task, name, value)
 
     def test_advance_failed_does_not_give_up(self):
         """戏剧里没有「放弃挑战」：自动前进到开战超时只记日志继续挂机，不去点放弃。"""
