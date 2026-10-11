@@ -9,8 +9,8 @@ from src.dna_ui.Defs import COORD, SCREEN_BOX
 import src.tasks.fullauto.AutoMoonHunterTask as syr_module
 from tests.support.task_helpers import check_image, run_fight_case
 from src.tasks.fullauto.AutoMoonHunterTask import (
-    AutoMoonHunterTask, ESC_RETRY, FIGHT_TIME_OUT, HUD_FIGHT, HUD_MARKER_BOX, HUD_START,
-    LOAD_TIME_OUT, NO_COMBAT_TIME_OUT, RESTART_CONFIRM, RESTART_FAILURE_LIMIT, RESULT_RESTART,
+    AutoMoonHunterTask, FIGHT_TIME_OUT, HUD_FIGHT, HUD_MARKER_BOX, HUD_START,
+    LOAD_TIME_OUT, NO_COMBAT_TIME_OUT, RESTART_FAILURE_LIMIT, RESULT_RESTART,
     RUN_SETTLE, SKILL_STOP_DELAY, START_BTN, START_CONFIRM, SYR_MARKER_RED,
     SYR_MARKER_RED_THRESHOLD, WALK_HOLD_KEYS, WALK_RELEASE_KEYS, WALK_SCHEDULE,
 )
@@ -82,8 +82,12 @@ class TestMoonHunterTask(TaskTestCase):
             self._check(shot, lambda: self.task.find_one(RESULT_RESTART), expected=False)
 
     def test_in_mission(self):
-        """局内 = 通用 HUD（in_team）或局内菜单；阵容页/结算页都不算。"""
-        for shot in ('syr_hud.png', 'syr_hud_fighting.png'):
+        """局内 = 通用 HUD（in_team）或局内菜单；阵容页/结算页都不算。
+
+        菜单判据用的是共用的设置齿轮（`find_esc_menu`）—— 这个模式的菜单里没有「重新开始」，
+        不能像戏剧那样拿那个按钮当判据，所以这里用戏剧的菜单截图（同一个局内菜单）来钉住。
+        """
+        for shot in ('syr_hud.png', 'syr_hud_fighting.png', 'theatre_esc_menu.png'):
             self._check(shot, self.task.in_moon_hunter_mission, expected=True)
         for shot in ('syr_start.png', 'syr_result.png'):
             self._check(shot, self.task.in_moon_hunter_mission, expected=False)
@@ -205,9 +209,12 @@ class TestMoonHunterTask(TaskTestCase):
         try:
             task.find_one = fake_find_one
             task.click_ui_coord = fake_click
+            task.aborted_run = True
             task.start_mission(time_out=1)
             self.assertEqual(clicks, [COORD.SYR_START, COORD.START_CONFIRM],
                              '先点「开始挑战」，有弹窗再点「确定」')
+            self.assertFalse(task.aborted_run,
+                             '从阵容页开新一局要清掉「中途退出」标记，否则会吞掉下一张结算页的计数')
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
@@ -251,7 +258,7 @@ class TestMoonHunterTask(TaskTestCase):
                 setattr(task, name, value)
 
     def test_walk_never_combat_restarts_and_rewalks(self):
-        """走位之后一直没开战：记一次失败 + ESC 重开，并把局内状态清掉（下次重新走位）。"""
+        """走位之后一直没开战：记一次失败 + 退出副本重开，并把局内状态清掉（下次重新走位）。"""
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('find_one', 'wait_mission_loaded', 'play_walk', 'stop_skills', 'sleep',
@@ -270,9 +277,61 @@ class TestMoonHunterTask(TaskTestCase):
             task.log_info = lambda message, *a, **kw: logs.append(message)
             task.run_failures = 0
             self.assertFalse(task.wait_combat(), '等不到开战要返回 False')
-            self.assertEqual(restarts, [1], 'ESC 重新开始一局')
+            self.assertEqual(restarts, [1], '退出副本重开一局')
             self.assertEqual(task.run_failures, 1)
             self.assertTrue(any(str(FIGHT_TIME_OUT) in message for message in logs))
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_restart_in_mission_exits_then_waits_a_known_screen(self):
+        """重开一局 = 关技能 -> 标记中途退出 -> 退出副本 -> 等回结算页或阵容页。
+
+        退出之后两种落点都要接住：正常落结算页（挑战失败），结算页倒计时自动退出时落阵容页。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('exit_mission', 'find_one', 'wait_until', 'stop_skills', 'aborted_run')}
+        events = []
+        try:
+            task.stop_skills = lambda *a, **kw: events.append('stop_skills')
+            task.exit_mission = lambda *a, **kw: events.append('exit_mission') or True
+            task.wait_until = lambda condition, *a, **kw: bool(condition())
+            task.aborted_run = False
+
+            task.find_one = lambda name, *a, **kw: 'box' if name == RESULT_RESTART else None
+            task.restart_in_mission()
+            self.assertEqual(events, ['stop_skills', 'exit_mission'])
+            self.assertTrue(task.aborted_run, '要标记这一页是中途退出来的')
+
+            events.clear()
+            task.find_one = lambda name, *a, **kw: 'box' if name == START_BTN else None
+            task.restart_in_mission()                       # 落阵容页也算回到已知界面
+            self.assertEqual(events, ['stop_skills', 'exit_mission'])
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_restart_in_mission_failure_modes(self):
+        """菜单打不开、退出后一直认不出界面：都要报错停止，不能干等或乱点。"""
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('exit_mission', 'find_one', 'wait_until', 'stop_skills', 'aborted_run')}
+        try:
+            task.stop_skills = lambda *a, **kw: None
+            task.wait_until = lambda *a, **kw: False
+            task.find_one = lambda *a, **kw: None
+            task.aborted_run = False
+
+            task.exit_mission = lambda *a, **kw: False
+            with self.assertRaises(Exception) as caught:
+                task.restart_in_mission()
+            self.assertIn('局内菜单', str(caught.exception))
+
+            task.exit_mission = lambda *a, **kw: True
+            with self.assertRaises(Exception) as caught:
+                task.restart_in_mission()
+            self.assertIn('结算页或阵容页', str(caught.exception))
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
@@ -388,7 +447,8 @@ class TestMoonHunterTask(TaskTestCase):
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('config', 'find_one', 'click_ui_coord', 'wait_left_result',
-                     'mission_started', 'skills_stopped', 'current_run', 'run_failures')}
+                     'mission_started', 'skills_stopped', 'current_run', 'run_failures',
+                     'aborted_run')}
         stopped_at_click = []
         try:
             task.config = {'打几次': 0}
@@ -398,6 +458,7 @@ class TestMoonHunterTask(TaskTestCase):
             task.skills_stopped = False
             task.current_run = 0
             task.run_failures = 0
+            task.aborted_run = False
             self.assertFalse(task.handle_result())
             self.assertEqual(stopped_at_click, [True], '点「重新开始」之前技能总闸必须已经关掉')
             self.assertEqual(task.current_run, 1)
@@ -410,7 +471,8 @@ class TestMoonHunterTask(TaskTestCase):
         task = self.task
         original = {name: getattr(task, name) for name in
                     ('config', 'find_one', 'click_ui_coord', 'wait_left_result',
-                     'mission_started', 'stop_skills', 'current_run', 'run_failures')}
+                     'mission_started', 'stop_skills', 'current_run', 'run_failures',
+                     'aborted_run')}
         clicks = []
         try:
             task.config = {'打几次': 2}
@@ -420,10 +482,43 @@ class TestMoonHunterTask(TaskTestCase):
             task.stop_skills = lambda *a, **kw: None
             task.current_run = 0
             task.run_failures = 3
+            task.aborted_run = False
             self.assertFalse(task.handle_result(), '第 1 次还不该结束')
             self.assertEqual(task.run_failures, 0, '打完一局要清零连续失败计数')
             self.assertTrue(task.handle_result(), '第 2 次打满就该结束')
             self.assertEqual(clicks, [COORD.SYR_RESTART], '打满之后不该再点「重新开始」')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_result_from_a_give_up_is_not_counted(self):
+        """「走位没开起来 → 退出副本」落回的那张结算页：不计次、不清失败计数，照样点「重新开始」。
+
+        「打几次」只数真打完的局数；连续失败由 note_failure 的 3 次上限兜底（0 = 无限时也一样）。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('config', 'find_one', 'click_ui_coord', 'wait_left_result',
+                     'mission_started', 'stop_skills', 'current_run', 'run_failures',
+                     'aborted_run', 'log_info')}
+        clicks = []
+        logs = []
+        try:
+            task.config = {'打几次': 2}
+            task.find_one = lambda name, *a, **kw: 'box' if name == RESULT_RESTART else None
+            task.click_ui_coord = lambda coord, **kw: clicks.append(coord)
+            task.wait_left_result = lambda *a, **kw: None
+            task.stop_skills = lambda *a, **kw: None
+            task.log_info = lambda message, *a, **kw: logs.append(message)
+            task.current_run = 1
+            task.run_failures = 2
+            task.aborted_run = True
+            self.assertFalse(task.handle_result(), '中途退出的那一页不算打满')
+            self.assertEqual(task.current_run, 1, '中途退出不计入「打几次」')
+            self.assertEqual(task.run_failures, 2, '连续失败计数要留着，交给 3 次上限兜底')
+            self.assertFalse(task.aborted_run, '标记用掉就要清掉')
+            self.assertEqual(clicks, [COORD.SYR_RESTART], '照样点「重新开始」继续')
+            self.assertTrue(any('不计入次数' in message for message in logs))
         finally:
             for name, value in original.items():
                 setattr(task, name, value)
@@ -445,7 +540,7 @@ class TestMoonHunterTask(TaskTestCase):
     # ---- 共用坐标 / 判据框的出处 ----
 
     def test_defs_entries(self):
-        """点击坐标和颜色兜底框都在 Defs 里，ESC 菜单坐标和戏剧共用同一份。"""
+        """点击坐标和颜色兜底框都在 Defs 里，共用坐标和戏剧是同一份。"""
         from src.dna_ui.Defs import COORD as coords
         self.assertEqual(coords.SYR_START, (1277, 810))
         self.assertEqual(coords.SYR_RESTART, (588, 792))
@@ -455,8 +550,8 @@ class TestMoonHunterTask(TaskTestCase):
         self.assertEqual(SCREEN_BOX.SYR_HUD_MARKER, (1600, 900, 45, 273, 51, 286, True))
         self.assertEqual(HUD_START, 'syr_hud_start')
         self.assertEqual(HUD_FIGHT, 'syr_hud_fight')
-        self.assertEqual(RESTART_CONFIRM, 'esc_restart_check_btn')
-        self.assertEqual(ESC_RETRY, 'esc_retry')
+        self.assertEqual(RESULT_RESTART, 'syr_hud_restart')
+        self.assertEqual(START_BTN, 'syr_start_btn')
         self.assertEqual(LOAD_TIME_OUT, 30)
 
 

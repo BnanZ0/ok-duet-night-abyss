@@ -355,36 +355,47 @@ class CommissionsTask(BaseDNATask):
         self.sleep(1)
         self.wait_until(lambda: not self.in_team(), time_out=action_timeout, raise_if_not_found=True)
 
+    def exit_mission(self, timeout=0):
+        """ESC 菜单里点「退出 / 放弃挑战」并把二次确认弹窗点掉 —— 只负责退出动作。
+
+        各模式的按钮位置和确认弹窗都一样，所以这里通用；退出之后回到哪个界面由调用方决定：
+        `give_up_mission()` 等的是模式界面，狩月人那种等的是结算页 / 阵容页。
+        两次点击都是云游戏爱丢的，所以都是"点到出结果为止"。
+        返回是否成功打开了菜单并发起了退出。
+        """
+        action_timeout = self.action_timeout if timeout == 0 else timeout
+
+        if not self.open_in_mission_menu(time_out=10, raise_if_not_found=False):
+            return False
+        # ESC 菜单里「退出 / 放弃挑战」
+        self.wait_until(
+            condition=lambda: not self.find_esc_menu(),
+            post_action=lambda: self.click_ui_coord(COORD.ESC_GIVEUP, name="esc_giveup", after_sleep=0.25),
+            time_out=action_timeout,
+            raise_if_not_found=True,
+        )
+        self.sleep(0.5)
+        # 二次确认弹窗：点弹出的「确定」直到它消失
+        confirmed = {}
+
+        def _click_giveup_confirm():
+            confirmed['box'] = self.find_center_confirm(threshold=0.9)
+            self._click_detected(confirmed.get('box'), name="giveup_confirm")
+
+        self.wait_until(
+            condition=lambda: not self.find_center_confirm(threshold=0.9),
+            post_action=_click_giveup_confirm,
+            time_out=action_timeout,
+            raise_if_not_found=True,
+        )
+        self.sleep(0.5)
+        return True
+
     def give_up_mission(self, timeout=0):
         def is_mission_start_iface():
             return self.find_start_interface() or self.find_action_dialog_continue() or self.find_esc_menu()
 
-        action_timeout = self.action_timeout if timeout == 0 else timeout
-
-        if self.open_in_mission_menu(time_out=10, raise_if_not_found=False):
-            # ESC 菜单里「放弃挑战」
-            self.wait_until(
-                condition=lambda: not self.find_esc_menu(),
-                post_action=lambda: self.click_ui_coord(COORD.ESC_GIVEUP, name="esc_giveup", after_sleep=0.25),
-                time_out=action_timeout,
-                raise_if_not_found=True,
-            )
-            self.sleep(0.5)
-            # 「放弃挑战」有二次确认弹窗，点弹出的「确定」直到它消失
-            confirmed = {}
-
-            def _click_giveup_confirm():
-                confirmed['box'] = self.find_center_confirm(threshold=0.9)
-                self._click_detected(confirmed.get('box'), name="giveup_confirm")
-
-            self.wait_until(
-                condition=lambda: not self.find_center_confirm(threshold=0.9),
-                post_action=_click_giveup_confirm,
-                time_out=action_timeout,
-                raise_if_not_found=True,
-            )
-            self.sleep(0.5)
-
+        self.exit_mission(timeout=timeout)
         self.wait_until(condition=is_mission_start_iface, time_out=60, raise_if_not_found=False)
 
     def continue_mission(self, timeout=0):
