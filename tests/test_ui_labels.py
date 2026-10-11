@@ -9,6 +9,7 @@ from ok.test.TaskTestCase import TaskTestCase
 from src.tasks.CommissionsTask import CommissionsTask, _default_movement, normalize_ocr_scale
 from src.tasks.config.CommissionConfig import LETTER_HANDLE_AUTO_SELECT_FIRST
 from src.dna_ui.Defs import COORD, DISCRIMINATORS, REWARD_COUNT_BOX, REWARD_SELECTED_BOX
+from tests.support.task_helpers import check_image
 
 IMAGES = 'tests/images/'
 
@@ -38,15 +39,7 @@ class TestUiLabels(TaskTestCase):
     config = config
 
     def _check(self, image, finder, expected=True):
-        self.set_image(IMAGES + image)
-        feature = finder()
-        self.logger.info(f'{image} -> {feature}')
-        if isinstance(feature, bool):
-            self.assertEqual(feature, expected, f'{image} should be {expected}')
-        elif expected:
-            self.assertIsNotNone(feature, f'{image} should match')
-        else:
-            self.assertIsNone(feature, f'{image} should not match')
+        check_image(self, IMAGES + image, finder, expected)
 
     # ---- 开始界面：开始按钮 ----
 

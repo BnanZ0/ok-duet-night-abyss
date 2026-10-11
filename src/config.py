@@ -215,6 +215,7 @@ config = {
         ["src.tasks.fullauto.Auto70jjbTask", "Auto70jjbTask"],
         ["src.tasks.fullauto.ImportTask", "ImportTask"],
         ["src.tasks.fullauto.AutoTheatreTask", "AutoTheatreTask"],
+        ["src.tasks.fullauto.AutoMoonHunterTask", "AutoMoonHunterTask"],
         ["src.tasks.AutoSkill", "AutoSkill"],
         ["src.tasks.AutoGeneral", "AutoGeneral"],
         ["src.tasks.AutoExpulsion", "AutoExpulsion"],
