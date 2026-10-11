@@ -602,3 +602,12 @@ msgstr "Combat detection"
 
 msgid "如果某些特殊模式技能释放异常 尝试关掉"
 msgstr "If skills are not released properly in some special modes, try turning this off"
+
+msgid "自动狩月人"
+msgstr "Auto Moon Hunter"
+
+msgid "打几次"
+msgstr "Runs"
+
+msgid "打几次，0 = 无限循环"
+msgstr "How many runs, 0 = endless"

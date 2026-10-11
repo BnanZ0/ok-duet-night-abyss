@@ -9,6 +9,7 @@ from ok.test.TaskTestCase import TaskTestCase
 from src.dna_ui.Defs import COORD
 import src.tasks.CommissionsTask as commissions_module
 import src.tasks.fullauto.AutoTheatreTask as theatre_module
+from tests.support.task_helpers import check_image, run_fight_case
 from src.tasks.fullauto.AutoTheatreTask import (
     AutoTheatreTask, ESC_RETRY, INTERACT_PROMPT, OBJECTIVE_PANEL, OBJECTIVE_PANEL_FIGHT,
     OBJECTIVE_RED, OBJECTIVE_RED_THRESHOLD, RESULT_FAIL, RESULT_RETRY, RESULT_WIN,
@@ -24,15 +25,7 @@ class TestTheatreTask(TaskTestCase):
     config = config
 
     def _check(self, image, finder, expected=True):
-        self.set_image(IMAGES + image)
-        feature = finder()
-        self.logger.info(f'{image} -> {feature}')
-        if isinstance(feature, bool):
-            self.assertEqual(feature, expected, f'{image} should be {expected}')
-        elif expected:
-            self.assertIsNotNone(feature, f'{image} should match')
-        else:
-            self.assertIsNone(feature, f'{image} should not match')
+        check_image(self, IMAGES + image, finder, expected)
 
     # ---- 阵容页 / 结算页：按钮判据各认各的 ----
 
@@ -476,49 +469,15 @@ class TestTheatreTask(TaskTestCase):
     # ---- 挂机：什么时候算结束、什么时候算没进战斗 ----
 
     def _fight_case(self, in_combat_seq, exit_at, seconds_per_poll):
-        """跑一遍 fight_until_result，返回（返回值, 技能次数, 日志, 重开次数）。
-
-        in_combat_seq 按轮次喂给 is_in_combat()，超出部分沿用最后一个值；
-        第 exit_at 轮 find_one(RESULT_WIN) 命中（结算页出现），时钟每轮前进 seconds_per_poll 秒。
-        """
-        task = self.task
-        original = {name: getattr(task, name) for name in
-                    ('find_one', 'is_in_combat', 'skill_tick', 'log_info', 'sleep',
-                     'read_stage_text', 'restart_in_mission',
-                     'no_combat_failures', 'combat_seen_at')}
-        original_time = theatre_module.time
-        seq = list(in_combat_seq)
-        logs, skills, restarts = [], [], []
-        win = {'n': 0}
-        clock = {'now': 0.0}
-
-        def fake_find_one(name, *args, **kwargs):
-            if name == RESULT_WIN:
-                win['n'] += 1
-                return 'result' if win['n'] >= exit_at else None
-            return None
-
-        def fake_now():
-            clock['now'] += seconds_per_poll
-            return clock['now']
-
-        try:
-            task.find_one = fake_find_one
-            task.is_in_combat = lambda: seq.pop(0) if seq else False
-            task.skill_tick = lambda: skills.append(1)
-            task.log_info = lambda message, *args, **kwargs: logs.append(message)
-            task.sleep = lambda seconds: None
+        """跑一遍 fight_until_result，返回（返回值, 技能次数, 日志, 重开次数）。"""
+        def setup(task):
             task.read_stage_text = lambda: None
-            task.restart_in_mission = lambda *args, **kwargs: restarts.append(1)
             task.no_combat_failures = 0
-            task.combat_seen_at = 0.0            # 和假时钟对齐，让"停止释放技能"的计时可算
-            task.skills_stopped = False
-            theatre_module.time = type('FakeTime', (), {'time': staticmethod(fake_now)})
-            return task.fight_until_result(), skills, logs, restarts
-        finally:
-            theatre_module.time = original_time
-            for name, value in original.items():
-                setattr(task, name, value)
+
+        return run_fight_case(self, theatre_module, RESULT_WIN, in_combat_seq, exit_at,
+                              seconds_per_poll,
+                              patch_names=('read_stage_text', 'no_combat_failures'),
+                              setup=setup)
 
     def test_fight_returns_true_on_result_screen(self):
         """出现结算页 = 这一局打完：返回 True（交给主循环去点「前往」）。"""

@@ -102,7 +102,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/3.png",
+            "file_name": "images/4.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -111,7 +111,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/3.png",
+            "file_name": "images/4.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -120,7 +120,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/3.png",
+            "file_name": "images/4.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -129,7 +129,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/4.png",
+            "file_name": "images/5.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -138,7 +138,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/3.png",
+            "file_name": "images/4.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -147,7 +147,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/5.png",
+            "file_name": "images/6.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -156,7 +156,7 @@
         {
             "license": 0,
             "url": null,
-            "file_name": "images/3.png",
+            "file_name": "images/4.png",
             "height": 2160,
             "width": 3840,
             "date_captured": null,
@@ -194,19 +194,19 @@
         },
         {
             "id": 25,
-            "file_name": "images/1.png",
+            "file_name": "images/2.png",
             "width": 1600,
             "height": 900
         },
         {
             "id": 31,
-            "file_name": "images/0.png",
+            "file_name": "images/1.png",
             "width": 1600,
             "height": 900
         },
         {
             "id": 32,
-            "file_name": "images/1.png",
+            "file_name": "images/0.png",
             "width": 1600,
             "height": 900
         },
@@ -230,12 +230,36 @@
         },
         {
             "id": 39,
-            "file_name": "images/2.png",
+            "file_name": "images/1.png",
             "width": 1600,
             "height": 900
         },
         {
             "id": 40,
+            "file_name": "images/0.png",
+            "width": 1600,
+            "height": 900
+        },
+        {
+            "id": 46,
+            "file_name": "images/1.png",
+            "width": 1600,
+            "height": 900
+        },
+        {
+            "id": 47,
+            "file_name": "images/2.png",
+            "width": 1600,
+            "height": 900
+        },
+        {
+            "id": 48,
+            "file_name": "images/3.png",
+            "width": 1600,
+            "height": 900
+        },
+        {
+            "id": 49,
             "file_name": "images/0.png",
             "width": 1600,
             "height": 900
@@ -1048,6 +1072,58 @@
             ],
             "area": 576,
             "iscrowd": 0
+        },
+        {
+            "id": 58,
+            "image_id": 46,
+            "category_id": 58,
+            "bbox": [
+                1266,
+                799,
+                23,
+                23
+            ],
+            "area": 529,
+            "iscrowd": 0
+        },
+        {
+            "id": 59,
+            "image_id": 47,
+            "category_id": 59,
+            "bbox": [
+                45,
+                273,
+                6,
+                13
+            ],
+            "area": 78,
+            "iscrowd": 0
+        },
+        {
+            "id": 60,
+            "image_id": 48,
+            "category_id": 60,
+            "bbox": [
+                45,
+                273,
+                6,
+                12
+            ],
+            "area": 72,
+            "iscrowd": 0
+        },
+        {
+            "id": 61,
+            "image_id": 49,
+            "category_id": 61,
+            "bbox": [
+                575,
+                779,
+                26,
+                27
+            ],
+            "area": 702,
+            "iscrowd": 0
         }
     ],
     "categories": [
@@ -1334,6 +1410,26 @@
         {
             "id": 57,
             "name": "action_dialog_continue2",
+            "supercategory": ""
+        },
+        {
+            "id": 58,
+            "name": "syr_start_btn",
+            "supercategory": ""
+        },
+        {
+            "id": 59,
+            "name": "syr_hud_start",
+            "supercategory": ""
+        },
+        {
+            "id": 60,
+            "name": "syr_hud_fight",
+            "supercategory": ""
+        },
+        {
+            "id": 61,
+            "name": "syr_hud_restart",
             "supercategory": ""
         }
     ]

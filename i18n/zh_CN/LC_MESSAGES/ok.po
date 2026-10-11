@@ -599,3 +599,12 @@ msgstr ""
 
 msgid "如果某些特殊模式技能释放异常 尝试关掉"
 msgstr ""
+
+msgid "自动狩月人"
+msgstr ""
+
+msgid "打几次"
+msgstr ""
+
+msgid "打几次，0 = 无限循环"
+msgstr ""

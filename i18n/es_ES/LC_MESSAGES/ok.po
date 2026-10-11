@@ -602,3 +602,12 @@ msgstr "Detección de combate"
 
 msgid "如果某些特殊模式技能释放异常 尝试关掉"
 msgstr "Si las habilidades no se liberan bien en algunos modos especiales, prueba a desactivarlo"
+
+msgid "自动狩月人"
+msgstr "Auto Cazador de la Luna"
+
+msgid "打几次"
+msgstr "Repeticiones"
+
+msgid "打几次，0 = 无限循环"
+msgstr "Cuántas veces repetir, 0 = infinito"
