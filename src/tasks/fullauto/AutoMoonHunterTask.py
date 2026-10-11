@@ -12,13 +12,13 @@ logger = Logger.get_logger(__name__)
 # ---- 界面判据 label（标注在 ok_templates，运行期从 assets 的 coco 标注取模板）----
 # 和沉浸式戏剧一样，这些 label 的搜索框就是 coco 标注本身（框架按标注位置 ±0.4% 的方差搜），
 # 位置固定、框也很紧，所以不写进 Defs.DISCRIMINATORS；点击坐标统一放 Defs.COORD。
+# 局内菜单用共用的 `find_esc_menu()`（设置齿轮）判：这个模式的菜单里没有「重新开始」，
+# 只有「退出」，所以不能像戏剧那样拿「重新开始」按钮当菜单判据。
 START_BTN = 'syr_start_btn'                    # 阵容页「开始挑战」按钮里的 ◯ 图标
 HUD_START = 'syr_hud_start'                    # 局内左上角金色菱形：关卡已加载、还没开战
 HUD_FIGHT = 'syr_hud_fight'                    # 同一个菱形的战斗态标注，只做判据兜底
 RESULT_RESTART = 'syr_hud_restart'             # 结算页「重新开始」的环形箭头
 START_CONFIRM = 'start_screen_start_btn_3_1'   # 「确认进入」弹窗的「确定」（各模式共用）
-ESC_RETRY = 'esc_retry'                        # 局内菜单「重新开始」（和戏剧共用同一个菜单）
-RESTART_CONFIRM = 'esc_restart_check_btn'      # 「是否重新开始战斗」二次确认弹窗的「确定」
 
 # 「已开战」用的颜色框（Defs.SCREEN_BOX 里的名字）
 HUD_MARKER_BOX = 'SYR_HUD_MARKER'
@@ -110,6 +110,8 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.current_run = 0
         self.run_failures = 0
         self.mission_started = False
+        # 这一张结算页是不是「走位没开起来 → 退出副本」落下来的（那种不计入「打几次」）
+        self.aborted_run = False
 
     # ------------------------------------------------------------------
     # 生命周期
@@ -165,6 +167,7 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         self.current_run = 0
         self.run_failures = 0
         self.mission_started = False
+        self.aborted_run = False
 
     def target_runs(self):
         """读「打几次」配置：0 表示无限循环，读不出来也当无限。"""
@@ -193,7 +196,7 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
     def in_moon_hunter_mission(self):
         """是不是在局内（局内菜单盖在 HUD 上时也算）。"""
-        return self.in_team() or self.find_one(ESC_RETRY) is not None
+        return self.in_team() or self.find_esc_menu()
 
     def find_hud_marker(self):
         """左上角那颗菱形（金/红都在同一个位置）。
@@ -227,7 +230,11 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         弹窗不是每次都有（游戏里能设成不再提示），而且弹窗一盖上来阵容页的「开始挑战」
         就被压暗到认不出来 —— 所以"弹窗出现"和"已经进图"都算这一步走通，谁先到算谁。
         云游戏会丢点击，所以点一次没动静就再点一次（间隔 1 秒）。
+
+        从阵容页开新一局时顺手清掉「中途退出」标记：那次退出没落结算页，标记不该留到下一张。
         """
+        self.aborted_run = False
+
         def confirm_or_left():
             return self.find_one(START_CONFIRM) is not None or self.left_start_screen()
 
@@ -249,8 +256,8 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
     # ------------------------------------------------------------------
 
     def handle_in_mission(self):
-        """局内一次处理：走位触发战斗，然后一直打到结算页或需要重开一局。"""
-        if self.find_one(ESC_RETRY):
+        """局内一次处理：走位触发战斗，然后一直打到结算页或需要重新开始一局。"""
+        if self.find_esc_menu():
             # 局内菜单被打开了（一般是玩家自己按的 ESC）：关掉继续，绝不在这里点菜单
             self.send_key("esc", after_sleep=0.5)
             return
@@ -318,7 +325,7 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
         while True:
             if self.find_one(RESULT_RESTART):
                 return True
-            if self.find_one(ESC_RETRY):
+            if self.find_esc_menu():
                 self.stop_skills('局内菜单被打开')
                 self.send_key("esc", after_sleep=0.5)
                 continue
@@ -335,40 +342,26 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
             self.tick_skills(in_combat)
             self.sleep(0.2)
 
-    def restart_in_mission(self, time_out=10, load_time_out=LOAD_TIME_OUT):
-        """局内重来：ESC 开菜单 -> 点「重新开始」-> 点二次确认的「确定」。
+    def restart_in_mission(self):
+        """局内重新开始一局：这个模式的 ESC 菜单里没有「重新开始」，按普通副本的做法点「退出」+ 确认。
 
-        两个都是云游戏爱丢的点击，所以都是"点到出结果为止"：先点到弹窗出来，再点到弹窗消失。
-        重开会把关卡重新加载一遍，菜单/弹窗/加载画面都会盖掉菱形判据，所以"先消失再回来"
-        正好当重开完成的信号；万一它没消失（秒重开）也不会卡住，直接往下走。
+        退出之后可能落在结算页（挑战失败），也可能回到阵容页（结算页倒计时自动退出等），
+        两种都交回主循环处理：结算页点「重新开始」、阵容页点「开始挑战」。
+        先在这里等出这两种已知界面再返回，免得退出一瞬间画面还是旧帧（`in_team()` 仍为真）时
+        主循环误判成"还在局内"又去走位。
         """
-        self.stop_skills('重新开始')
-        start = time.time()
-        while not self.find_one(ESC_RETRY):
-            if time.time() - start > time_out:
-                raise Exception('局内菜单打不开，没法重新开始')
-            self.send_key("esc")
-            self.wait_until(lambda: self.find_one(ESC_RETRY) is not None, time_out=2,
-                            raise_if_not_found=False)
-        self.wait_until(
-            condition=lambda: self.find_one(RESTART_CONFIRM) is not None,
-            post_action=lambda: self.click_ui_coord(COORD.ESC_MENU_RETRY, name=ESC_RETRY,
-                                                    after_sleep=0.5),
-            time_out=time_out,
-        )
-        self.wait_until(
-            condition=lambda: not self.find_one(RESTART_CONFIRM),
-            post_action=lambda: self.click_ui_coord(COORD.ESC_MENU_RETRY_CONFIRM,
-                                                    name=RESTART_CONFIRM, after_sleep=0.5),
-            time_out=time_out,
-        )
-        # 弹窗没了不等于真重开了：局内菜单必须也关掉，否则走位键全打进菜单里。
-        # 云游戏丢那一下点击时就是这种情况：菜单还开着，可 in_team() 已经是真，
-        # wait_mission_loaded() 会立刻放行 → 后面每一步都失败。
-        if not self.wait_until(lambda: self.find_one(ESC_RETRY) is None, time_out=time_out,
+        self.stop_skills('退出重开')
+        self.aborted_run = True
+        if not self.exit_mission():
+            raise Exception('局内菜单打不开，没法退出副本')
+
+        def back_to_known_screen():
+            return (self.find_one(RESULT_RESTART) is not None
+                    or self.find_one(START_BTN) is not None)
+
+        if not self.wait_until(back_to_known_screen, time_out=LOAD_TIME_OUT,
                                raise_if_not_found=False):
-            raise Exception('点了「重新开始」之后局内菜单一直没关掉，停止任务')
-        self.wait_mission_loaded(time_out=load_time_out)
+            raise Exception(f'退出副本之后 {LOAD_TIME_OUT} 秒还没回到结算页或阵容页')
 
     # ------------------------------------------------------------------
     # 技能：只在真在打的时候放
@@ -416,16 +409,22 @@ class AutoMoonHunterTask(DNAOneTimeTask, CommissionsTask, BaseCombatTask):
 
         点之前先把技能停掉：结算页被漏读时技能还在按，那一下会跟着点击一起被带进下一局的开场，
         人物还没走位先放一个技能。结算页有 90 多秒的自动退出倒计时，所以检测到就立刻点。
+        走位没开起来时是「退出副本」落回结算页的（挑战失败），那一页不算一次「打几次」、
+        也不清空连续失败计数 —— 「打几次」只数真打完的局数，连续失败由 note_failure 兜底。
         """
         self.stop_skills('结算页')
         self.mission_started = False
-        self.run_failures = 0
-        self.current_run += 1
-        self.log_info(f'第 {self.current_run} 次完成')
-        target = self.target_runs()
-        if target and self.current_run >= target:
-            self.log_info(f'已经打满 {target} 次，任务结束')
-            return True
+        if self.aborted_run:
+            self.aborted_run = False
+            self.log_info('中途退出，这一页不计入次数，继续重试')
+        else:
+            self.run_failures = 0
+            self.current_run += 1
+            self.log_info(f'第 {self.current_run} 次完成')
+            target = self.target_runs()
+            if target and self.current_run >= target:
+                self.log_info(f'已经打满 {target} 次，任务结束')
+                return True
         self.click_ui_coord(COORD.SYR_RESTART, name=RESULT_RESTART, after_sleep=1)
         self.wait_left_result()
         return False

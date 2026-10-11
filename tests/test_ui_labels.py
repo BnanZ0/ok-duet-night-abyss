@@ -492,6 +492,58 @@ class TestUiLabels(TaskTestCase):
             for name, value in original.items():
                 setattr(task, name, value)
 
+    # ---- 局内退出（各模式共用）：ESC 菜单点「退出/放弃挑战」+ 二次确认 ----
+
+    def test_exit_mission_clicks_quit_then_confirm(self):
+        """`exit_mission()` 只负责退出动作：ESC 菜单里点「退出」，再点二次确认弹窗的「确定」。
+
+        菜单和弹窗都可能被云游戏吃掉一次点击，所以都是"点到消失为止"。
+        """
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('open_in_mission_menu', 'find_esc_menu', 'click_ui_coord',
+                     'find_center_confirm', '_click_detected', 'sleep')}
+        clicks, confirms = [], []
+        state = {'menu': True, 'confirm': True}
+
+        def fake_click(coord, **kwargs):
+            clicks.append(coord)
+            state['menu'] = False
+
+        def fake_click_detected(box, **kwargs):
+            confirms.append(box)
+            state['confirm'] = False
+
+        try:
+            task.open_in_mission_menu = lambda *a, **kw: True
+            task.find_esc_menu = lambda *a, **kw: 'box' if state['menu'] else None
+            task.click_ui_coord = fake_click
+            task.find_center_confirm = lambda *a, **kw: 'box' if state['confirm'] else None
+            task._click_detected = fake_click_detected
+            task.sleep = lambda seconds: None
+            self.assertTrue(task.exit_mission(), '菜单能开就该返回 True')
+            self.assertEqual(clicks, [COORD.ESC_GIVEUP], '点菜单第 4 个按钮「退出 / 放弃挑战」')
+            self.assertEqual(confirms, ['box'], '再点二次确认弹窗的「确定」')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
+    def test_exit_mission_gives_up_when_menu_missing(self):
+        """局内菜单打不开时不做任何点击、返回 False（由调用方决定是报错还是继续等）。"""
+        task = self.task
+        original = {name: getattr(task, name) for name in
+                    ('open_in_mission_menu', 'click_ui_coord', 'find_center_confirm')}
+        clicks = []
+        try:
+            task.open_in_mission_menu = lambda *a, **kw: False
+            task.click_ui_coord = lambda coord, **kw: clicks.append(coord)
+            task.find_center_confirm = lambda *a, **kw: 'box'
+            self.assertFalse(task.exit_mission())
+            self.assertEqual(clicks, [], '菜单都打不开就不该乱点')
+        finally:
+            for name, value in original.items():
+                setattr(task, name, value)
+
 
 if __name__ == '__main__':
     unittest.main()
