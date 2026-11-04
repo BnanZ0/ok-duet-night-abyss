@@ -611,3 +611,15 @@ msgstr "打幾次"
 
 msgid "打几次，0 = 无限循环"
 msgstr "打幾次，0 = 無限循環"
+
+msgid "OCR设置"
+msgstr "OCR設定"
+
+msgid "文字识别相关设置"
+msgstr "文字辨識相關設定"
+
+msgid "使用NPU"
+msgstr "使用NPU"
+
+msgid "有 NPU 时使用 NPU"
+msgstr "有 NPU 時使用 NPU"

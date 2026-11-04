@@ -1,3 +1,4 @@
+import json
 import os
 
 import numpy as np
@@ -64,6 +65,37 @@ monthly_card_config_option = ConfigOption(
     },
 )
 
+OCR_CONFIG = "OCR设置"
+ocr_config_option = ConfigOption(
+    OCR_CONFIG,
+    {"使用NPU": "Auto"},
+    description="文字识别相关设置",
+    config_type={"使用NPU": {"type": "drop_down", "options": ["Auto", "Yes", "No"]}},
+    config_description={"使用NPU": "有 NPU 时使用 NPU"},
+)
+
+
+def ocr_use_npu(folder="configs"):
+    """OCR 在启动时按 config 初始化，所以直接读存好的设置文件。Auto 返回 None，沿用 ok-script 的默认。"""
+    try:
+        with open(os.path.join(folder, OCR_CONFIG + ".json"), encoding="utf-8") as f:
+            option = json.load(f).get("使用NPU")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if option == "Yes":
+        return True
+    if option == "No":
+        return False
+    return None
+
+
+def ocr_params(folder="configs"):
+    params = {"use_openvino": True}
+    use_npu = ocr_use_npu(folder)
+    if use_npu is not None:
+        params["use_npu"] = use_npu
+    return params
+
 
 def make_bottom_right_black(frame):  # 可选. 某些游戏截图时遮挡UID使用
     """
@@ -112,6 +144,7 @@ config = {
         sensitivity_config_option,
         afk_config_option,
         monthly_card_config_option,
+        ocr_config_option,
     ],
     "screenshot_processor": make_bottom_right_black,  # 在截图的时候对frame进行修改, 可选
     "gui_icon": "icons/icon.png",  # 窗口图标, 最好不需要修改文件名
@@ -120,9 +153,7 @@ config = {
     "wait_until_settle_time": 0,  # 调用 wait_until时候, 在第一次满足条件的时候, 会等待再次检测, 以避免某些滑动动画没到预定位置就在动画路径中被检测到
     "ocr": {  # 可选, 使用的OCR库
         "lib": "onnxocr",
-        "params": {
-            "use_openvino": True,
-        },
+        "params": ocr_params(),
     },
     "browser": {
         "url": "https://dna.yingxiong.com/cloudgame/",

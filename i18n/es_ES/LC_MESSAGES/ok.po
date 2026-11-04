@@ -611,3 +611,15 @@ msgstr "Repeticiones"
 
 msgid "打几次，0 = 无限循环"
 msgstr "Cuántas veces repetir, 0 = infinito"
+
+msgid "OCR设置"
+msgstr "Configuración de OCR"
+
+msgid "文字识别相关设置"
+msgstr "Ajustes del reconocimiento de texto"
+
+msgid "使用NPU"
+msgstr "Usar NPU"
+
+msgid "有 NPU 时使用 NPU"
+msgstr "Usar la NPU si hay una"

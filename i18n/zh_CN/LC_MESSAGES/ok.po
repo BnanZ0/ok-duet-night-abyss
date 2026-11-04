@@ -608,3 +608,15 @@ msgstr ""
 
 msgid "打几次，0 = 无限循环"
 msgstr ""
+
+msgid "OCR设置"
+msgstr ""
+
+msgid "文字识别相关设置"
+msgstr ""
+
+msgid "使用NPU"
+msgstr ""
+
+msgid "有 NPU 时使用 NPU"
+msgstr ""
