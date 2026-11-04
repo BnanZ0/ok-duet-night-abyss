@@ -806,7 +806,8 @@ class BaseDNATask(BaseTask):
 
                 current_drift = perform_mouse_jitter(current_drift)
 
-                perform_random_key_press(random_key_list)
+                if self.afk_config.get("随机按键", True):
+                    perform_random_key_press(random_key_list)
 
                 long_sleep = random.choice([
                     random.uniform(3.05, 3.20), # ~ 3.0 / 3.3

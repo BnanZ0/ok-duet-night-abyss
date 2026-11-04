@@ -42,6 +42,7 @@ afk_config_option = ConfigOption(
         "防止鼠标干扰": True,
         "鼠标抖动": True,
         "鼠标抖动锁定在窗口范围": True,
+        "随机按键": True,
     },
     description="挂机相关设置",
     config_description={
@@ -51,6 +52,7 @@ afk_config_option = ConfigOption(
         "防止鼠标干扰": "启动任务时和特定场景下会将鼠标移动到安全位置",
         "鼠标抖动": "建议启用",
         "鼠标抖动锁定在窗口范围": "建议启用, 鼠标抖动时如果不在窗口范围则设置到窗口范围内",
+        "随机按键": "挂机时每隔几秒随机按下魔灵支援键或数字键",
     },
 )
 

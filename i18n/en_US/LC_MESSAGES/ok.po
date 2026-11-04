@@ -611,3 +611,9 @@ msgstr "Runs"
 
 msgid "打几次，0 = 无限循环"
 msgstr "How many runs, 0 = endless"
+
+msgid "随机按键"
+msgstr "Random key presses"
+
+msgid "挂机时每隔几秒随机按下魔灵支援键或数字键"
+msgstr "Press the Geniemon key or a number key at random every few seconds while AFK"
