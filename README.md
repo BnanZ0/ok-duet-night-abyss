@@ -165,9 +165,6 @@ All issues and consequences arising from the use of this software are not relate
 
 ## 💬 社区与交流
 
-*   **QQ 用户群**: `1063846003`
-*   **QQ 开发者群**: `259268560`
-*   **QQ 频道**: [点击加入](https://pd.qq.com/s/djmm6l44y)
 *   **Discord**: [https://discord.gg/vVyCatEBgA](https://discord.gg/vVyCatEBgA)
 
 ## 🔗 使用[ok-script](https://github.com/ok-oldking/ok-script)开发的项目：

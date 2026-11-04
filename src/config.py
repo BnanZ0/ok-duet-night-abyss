@@ -124,17 +124,6 @@ config = {
             "use_openvino": True,
         },
     },
-    "windows": {  # required  when supporting windows game
-        "exe": ["EM-Win64-Shipping.exe"],
-        "hwnd_class": "UnrealWindow",  # 增加重名检查准确度
-        "interaction": "PostMessage",  # 支持大多数PC游戏后台点击
-        "capture_method": [
-            "WGC",
-            "BitBlt_RenderFull",
-        ],  # Windows版本支持的话, 优先使用WGC, 否则使用BitBlt_Full
-        "check_hdr": False,  # 当用户开启AutoHDR时候提示用户, 但不禁止使用
-        "force_no_hdr": False,  # True=当用户开启AutoHDR时候禁止使用
-    },
     "browser": {
         "url": "https://dna.yingxiong.com/cloudgame/",
         "resolution": (1600, 900),
@@ -159,17 +148,14 @@ config = {
     "links": {  # 关于里显示的链接, 可选
         "default": {
             "github": "https://github.com/BnanZ0/ok-duet-night-abyss",
-            "sponsor": "https://ko-fi.com/bnanz",
-            "qq_group": "https://qm.qq.com/q/iF3bfUflY",
-            "qq_channel": "https://pd.qq.com/s/djmm6l44y",
             "discord": "https://discord.gg/vVyCatEBgA",
             "faq": "https://cnb.cool/BnanZ0/ok-duet-night-abyss/-/blob/master/README.md",
         }
     },
     "about": """
         <p style="color:red;">
-        <strong>本软件是免费开源的。</strong> 如果你被收费，请立即退款。请访问 QQ 频道或 GitHub 下载最新的官方版本。<br>
-        <strong>This software is free and open-source.</strong> If you were charged for it, please request a refund immediately. Visit the QQ channel or GitHub to download the latest official version.
+        <strong>本软件是免费开源的。</strong> 如果你被收费，请立即退款。<br>
+        <strong>This software is free and open-source.</strong> If you were charged for it, please request a refund immediately.
         </p>
 
         <p style="color:red;">

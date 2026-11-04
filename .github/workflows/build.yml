@@ -99,9 +99,7 @@ jobs:
               * [ok-dna-win32-China-setup.exe](https://github.com/BnanZ0/ok-duet-night-abyss/releases/download/${{ github.ref_name }}/ok-dna-win32-China-setup.exe) 完整安装包, 更新使用阿里云+腾讯CNB.
               * [ok-dna-win32-online-setup.exe](https://github.com/BnanZ0/ok-duet-night-abyss/releases/download/${{ github.ref_name }}/ok-dna-win32-online-setup.exe) 在线安装包, 在线白嫖的服务器不一定稳定, 建议优先使用完整包. 
               * [ok-dna-win32-Global-setup.exe](https://github.com/BnanZ0/ok-duet-night-abyss/releases/download/${{ github.ref_name }}/ok-dna-win32-Global-setup.exe) full package with dependencies, using GitHub and PyPi as update source 
-              * 不要下载ok-dna-win32.zip,和SourceCode.zip, Do Not Download the SourceCode, ok-dna-win32.zip            
-            ### 如果无法下载或下载慢, 可以使用其他下载源
-              * [夸克网盘](https://pan.quark.cn/s/a1052cec4d13) 免费, 需注册账号
+              * 不要下载ok-dna-win32.zip,和SourceCode.zip, Do Not Download the SourceCode, ok-dna-win32.zip
           draft: false
           prerelease: false
           make_latest: true
